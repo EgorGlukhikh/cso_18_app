@@ -207,7 +207,7 @@ export default function EventsPage() {
   const [subject, setSubject] = useState("");
   const [activityType, setActivityType] = useState<ActivityType>("INDIVIDUAL_LESSON");
   const [startTime, setStartTime] = useState("10:00");
-  const [durationMinutes, setDurationMinutes] = useState("45");
+  const [durationHours, setDurationHours] = useState("1");
   const [teacherId, setTeacherId] = useState("");
   const [studentId, setStudentId] = useState("");
 
@@ -319,7 +319,7 @@ export default function EventsPage() {
     setTitle("");
     setSubject("");
     setActivityType("INDIVIDUAL_LESSON");
-    setDurationMinutes("45");
+    setDurationHours("1");
     setCreateOpen(false);
   }
 
@@ -335,7 +335,7 @@ export default function EventsPage() {
     const [h, m] = startTime.split(":").map(Number);
     const start = new Date(`${createDate}T00:00:00`);
     start.setHours(h || 0, m || 0, 0, 0);
-    const end = new Date(start.getTime() + Number(durationMinutes || "45") * 60000);
+    const end = new Date(start.getTime() + Number(durationHours || "1") * 60 * 60000);
 
     const participants = [
       teacherId ? { userId: teacherId, participantRole: "TEACHER" as ParticipantRole } : null,
@@ -442,15 +442,23 @@ export default function EventsPage() {
       return;
     }
 
+    const patchBody: Record<string, string> = {
+      title: editTitle,
+      subject: editSubject
+    };
+    const currentStartIso = new Date(activeEvent.plannedStartAt).toISOString();
+    const currentEndIso = new Date(activeEvent.plannedEndAt).toISOString();
+    const nextStartIso = new Date(editStart).toISOString();
+    const nextEndIso = new Date(editEnd).toISOString();
+    if (nextStartIso !== currentStartIso || nextEndIso !== currentEndIso) {
+      patchBody.plannedStartAt = nextStartIso;
+      patchBody.plannedEndAt = nextEndIso;
+    }
+
     const patchRes = await fetch(`/api/events/${activeEvent.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: editTitle,
-        subject: editSubject,
-        plannedStartAt: new Date(editStart).toISOString(),
-        plannedEndAt: new Date(editEnd).toISOString()
-      })
+      body: JSON.stringify(patchBody)
     });
 
     if (!patchRes.ok) {
@@ -488,7 +496,7 @@ export default function EventsPage() {
     const y = e.clientY - bounds.top;
     const minutesFromStart = Math.max(0, Math.floor(y / PIXELS_PER_MINUTE));
     const hour = Math.min(SLOT_END_HOUR - 1, SLOT_START_HOUR + Math.floor(minutesFromStart / 60));
-    const minute = Math.floor((minutesFromStart % 60) / 15) * 15;
+    const minute = Math.floor((minutesFromStart % 60) / 30) * 30;
     const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
     openCreateModal(dayKey, time);
   }
@@ -712,8 +720,16 @@ export default function EventsPage() {
                   <option value="TEACHERS_GENERAL_MEETING">Административное</option>
                 </select>
               </label>
-              <label>Время начала<input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></label>
-              <label>Длительность (мин)<input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} /></label>
+              <label>Время начала<input type="time" step={1800} value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></label>
+              <label>
+                Длительность (часы)
+                <select value={durationHours} onChange={(e) => setDurationHours(e.target.value)}>
+                  <option value="1">1 час</option>
+                  <option value="2">2 часа</option>
+                  <option value="3">3 часа</option>
+                  <option value="4">4 часа</option>
+                </select>
+              </label>
               <label>
                 Преподаватель
                 <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
@@ -770,8 +786,8 @@ export default function EventsPage() {
                     )}
                   </select>
                 </label>
-                <label>Начало<input type="datetime-local" value={editStart} onChange={(e) => setEditStart(e.target.value)} /></label>
-                <label>Конец<input type="datetime-local" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} /></label>
+                <label>Начало<input type="datetime-local" step={1800} value={editStart} onChange={(e) => setEditStart(e.target.value)} /></label>
+                <label>Конец<input type="datetime-local" step={1800} value={editEnd} onChange={(e) => setEditEnd(e.target.value)} /></label>
                 <label>
                   Статус
                   <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as EventItem["status"])}>

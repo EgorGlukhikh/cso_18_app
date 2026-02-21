@@ -37,6 +37,22 @@ export const eventCreateSchema = eventBaseSchema
         message: "End must be later than start"
       });
     }
+    if (start.getMinutes() % 30 !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["plannedStartAt"],
+        message: "Start time must be in 30-minute steps"
+      });
+    }
+    const durationMs = end.getTime() - start.getTime();
+    const hourMs = 60 * 60 * 1000;
+    if (durationMs < hourMs || durationMs % hourMs !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["plannedEndAt"],
+        message: "Duration must be a whole number of hours"
+      });
+    }
   })
   .transform((value) => {
     const start = new Date(value.plannedStartAt);
@@ -60,6 +76,22 @@ export const eventUpdateSchema = eventBaseSchema
           code: z.ZodIssueCode.custom,
           path: ["plannedEndAt"],
           message: "End must be later than start"
+        });
+      }
+      if (start.getMinutes() % 30 !== 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["plannedStartAt"],
+          message: "Start time must be in 30-minute steps"
+        });
+      }
+      const durationMs = end.getTime() - start.getTime();
+      const hourMs = 60 * 60 * 1000;
+      if (durationMs < hourMs || durationMs % hourMs !== 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["plannedEndAt"],
+          message: "Duration must be a whole number of hours"
         });
       }
     }

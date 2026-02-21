@@ -83,7 +83,7 @@ export default function TeachersPage() {
   const [createType, setCreateType] = useState<"INDIVIDUAL_LESSON" | "GROUP_LESSON" | "TEACHERS_GENERAL_MEETING">("INDIVIDUAL_LESSON");
   const [createDate, setCreateDate] = useState(toDayString(new Date()));
   const [createTime, setCreateTime] = useState("10:00");
-  const [createDuration, setCreateDuration] = useState("45");
+  const [createDurationHours, setCreateDurationHours] = useState("1");
   const [createStudentIds, setCreateStudentIds] = useState<string[]>([]);
   const [createdByUserId, setCreatedByUserId] = useState("");
 
@@ -215,7 +215,7 @@ export default function TeachersPage() {
     const [hours, minutes] = createTime.split(":").map(Number);
     const start = new Date(`${createDate}T00:00:00`);
     start.setHours(hours, minutes, 0, 0);
-    const end = new Date(start.getTime() + Number(createDuration) * 60000);
+    const end = new Date(start.getTime() + Number(createDurationHours) * 60 * 60000);
 
     const participants = [{ userId: activeTeacher.user.id, participantRole: "TEACHER" }];
     for (const sid of createStudentIds) {
@@ -422,8 +422,16 @@ export default function TeachersPage() {
                 </select>
               </label>
               <label>Дата<input type="date" value={createDate} onChange={(e) => setCreateDate(e.target.value)} required /></label>
-              <label>Время<input type="time" value={createTime} onChange={(e) => setCreateTime(e.target.value)} required /></label>
-              <label>Длительность (мин)<input type="number" value={createDuration} onChange={(e) => setCreateDuration(e.target.value)} min={30} max={180} step={15} /></label>
+              <label>Время<input type="time" step={1800} value={createTime} onChange={(e) => setCreateTime(e.target.value)} required /></label>
+              <label>
+                Длительность (часы)
+                <select value={createDurationHours} onChange={(e) => setCreateDurationHours(e.target.value)}>
+                  <option value="1">1 час</option>
+                  <option value="2">2 часа</option>
+                  <option value="3">3 часа</option>
+                  <option value="4">4 часа</option>
+                </select>
+              </label>
               <label style={{ gridColumn: "1 / -1" }}>
                 Студенты
                 <select multiple value={createStudentIds} onChange={(e) => setCreateStudentIds(Array.from(e.target.selectedOptions).map((o) => o.value))}>

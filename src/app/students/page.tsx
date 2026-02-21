@@ -103,7 +103,7 @@ export default function StudentsPage() {
   const [eventType, setEventType] = useState<"INDIVIDUAL_LESSON" | "GROUP_LESSON">("INDIVIDUAL_LESSON");
   const [eventDate, setEventDate] = useState(toDayString(new Date()));
   const [eventTime, setEventTime] = useState("10:00");
-  const [eventDuration, setEventDuration] = useState("45");
+  const [eventDurationHours, setEventDurationHours] = useState("1");
   const [eventTeacherId, setEventTeacherId] = useState("");
 
   const [iopName, setIopName] = useState<string | null>(null);
@@ -279,7 +279,7 @@ export default function StudentsPage() {
     const [hours, minutes] = eventTime.split(":").map(Number);
     const start = new Date(`${eventDate}T00:00:00`);
     start.setHours(hours, minutes, 0, 0);
-    const end = new Date(start.getTime() + Number(eventDuration) * 60000);
+    const end = new Date(start.getTime() + Number(eventDurationHours) * 60 * 60000);
 
     const response = await fetch("/api/events", {
       method: "POST",
@@ -468,8 +468,16 @@ export default function StudentsPage() {
                 </select>
               </label>
               <label>Дата<input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required /></label>
-              <label>Время<input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required /></label>
-              <label>Длительность (мин)<input type="number" min={30} max={180} step={15} value={eventDuration} onChange={(e) => setEventDuration(e.target.value)} /></label>
+              <label>Время<input type="time" step={1800} value={eventTime} onChange={(e) => setEventTime(e.target.value)} required /></label>
+              <label>
+                Длительность (часы)
+                <select value={eventDurationHours} onChange={(e) => setEventDurationHours(e.target.value)}>
+                  <option value="1">1 час</option>
+                  <option value="2">2 часа</option>
+                  <option value="3">3 часа</option>
+                  <option value="4">4 часа</option>
+                </select>
+              </label>
               <div><button type="submit">Создать занятие</button></div>
             </form>
           </div>
