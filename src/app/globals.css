@@ -3,14 +3,14 @@
 
   --bg: #f3f6fb;
   --surface: #ffffff;
-  --surface-2: #f8fbff;
-  --border: #dbe4ee;
+  --surface-2: #f6f9ff;
+  --border: #bfcde0;
   --text: #162334;
   --muted: #5f7084;
   --accent: #1b6bd9;
   --accent-contrast: #ffffff;
   --danger: #b10028;
-  --shadow: 0 8px 24px rgba(20, 43, 76, 0.08);
+  --shadow: 0 10px 28px rgba(20, 43, 76, 0.1);
 }
 
 html[data-theme="dark"] {
@@ -95,6 +95,8 @@ code {
   border-radius: 14px;
   padding: 16px;
   box-shadow: var(--shadow);
+  outline: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  outline-offset: -1px;
 }
 
 .pill {
@@ -113,7 +115,7 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, #fff);
   text-align: left;
   padding: 10px 8px;
   font-size: 14px;
@@ -131,7 +133,7 @@ textarea {
   width: 100%;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 92%, #fff);
   font: inherit;
   color: var(--text);
   background: var(--surface-2);
@@ -157,7 +159,7 @@ button {
 button.secondary {
   background: var(--surface-2);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 92%, #fff);
 }
 
 .error {

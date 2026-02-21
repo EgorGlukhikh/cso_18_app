@@ -13,6 +13,7 @@ type ActivityType =
 
 type ParticipantRole = "STUDENT" | "TEACHER" | "CURATOR" | "PSYCHOLOGIST" | "PARENT";
 type ViewMode = "calendar" | "list";
+type CalendarScope = "day" | "week" | "month";
 type CategoryFilter = "individual" | "group" | "administrative";
 
 type EventItem = {
@@ -23,7 +24,6 @@ type EventItem = {
   status: "PLANNED" | "COMPLETED" | "CANCELED";
   plannedStartAt: string;
   plannedEndAt: string;
-  billableHours: number;
   participants: Array<{
     id: string;
     participantRole: ParticipantRole;
@@ -69,6 +69,36 @@ function startOfWeekMonday(base: Date) {
   return date;
 }
 
+function startOfMonth(base: Date) {
+  const date = new Date(base);
+  date.setDate(1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function endOfMonth(base: Date) {
+  const date = startOfMonth(base);
+  date.setMonth(date.getMonth() + 1);
+  date.setDate(0);
+  date.setHours(23, 59, 59, 999);
+  return date;
+}
+
+function getScopeRange(anchor: string, scope: CalendarScope) {
+  const base = new Date(`${anchor}T00:00:00`);
+  if (scope === "day") {
+    return { from: toDayString(base), to: toDayString(base) };
+  }
+  if (scope === "week") {
+    const monday = startOfWeekMonday(base);
+    const sunday = addDays(monday, 6);
+    return { from: toDayString(monday), to: toDayString(sunday) };
+  }
+  const monthStart = startOfMonth(base);
+  const monthEnd = endOfMonth(base);
+  return { from: toDayString(monthStart), to: toDayString(monthEnd) };
+}
+
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && bStart < aEnd;
 }
@@ -98,7 +128,7 @@ function typeLabel(type: ActivityType) {
   return map[type];
 }
 
-function buildLayout(events: EventItem[]) {
+function buildDayLayout(events: EventItem[]) {
   const dayEvents = [...events]
     .map((event) => ({ event, start: new Date(event.plannedStartAt), end: new Date(event.plannedEndAt) }))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -145,6 +175,7 @@ function buildLayout(events: EventItem[]) {
 export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState(toDayString(new Date()));
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
+  const [scope, setScope] = useState<CalendarScope>("month");
   const [status, setStatus] = useState("");
   const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(
     new Set(["individual", "group", "administrative"])
@@ -168,6 +199,20 @@ export default function EventsPage() {
   const weekDays = useMemo(() => {
     const monday = startOfWeekMonday(new Date(`${selectedDate}T00:00:00`));
     return Array.from({ length: 7 }, (_, idx) => addDays(monday, idx));
+  }, [selectedDate]);
+
+  const monthGridDays = useMemo(() => {
+    const anchor = new Date(`${selectedDate}T00:00:00`);
+    const monthStart = startOfMonth(anchor);
+    const monthEnd = endOfMonth(anchor);
+    const gridStart = startOfWeekMonday(monthStart);
+    const gridEnd = addDays(startOfWeekMonday(monthEnd), 6);
+
+    const days: Date[] = [];
+    for (let d = new Date(gridStart); d <= gridEnd; d = addDays(d, 1)) {
+      days.push(new Date(d));
+    }
+    return days;
   }, [selectedDate]);
 
   async function loadUsers() {
@@ -199,11 +244,7 @@ export default function EventsPage() {
     setLoading(true);
     setError("");
 
-    const monday = startOfWeekMonday(new Date(`${selectedDate}T00:00:00`));
-    const sunday = addDays(monday, 6);
-    const from = toDayString(monday);
-    const to = toDayString(sunday);
-
+    const { from, to } = getScopeRange(selectedDate, scope);
     const query = new URLSearchParams({ from, to });
     if (status) query.set("status", status);
 
@@ -226,7 +267,7 @@ export default function EventsPage() {
   useEffect(() => {
     loadEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, status]);
+  }, [selectedDate, status, scope]);
 
   async function createEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -290,20 +331,11 @@ export default function EventsPage() {
     [events, categoryFilters]
   );
 
-  const dayEvents = useMemo(
-    () => filteredEvents.filter((item) => toDayString(new Date(item.plannedStartAt)) === selectedDate),
-    [filteredEvents, selectedDate]
-  );
-
   const eventsByDay = useMemo(() => {
     const map = new Map<string, EventItem[]>();
-    for (const day of weekDays) {
-      map.set(toDayString(day), []);
-    }
-
     for (const event of filteredEvents) {
       const day = toDayString(new Date(event.plannedStartAt));
-      if (!map.has(day)) continue;
+      if (!map.has(day)) map.set(day, []);
       map.get(day)?.push(event);
     }
 
@@ -313,83 +345,82 @@ export default function EventsPage() {
     }
 
     return map;
-  }, [filteredEvents, weekDays]);
+  }, [filteredEvents]);
 
-  const cards = useMemo(() => buildLayout(dayEvents), [dayEvents]);
+  const listDays = useMemo(() => {
+    const anchor = new Date(`${selectedDate}T00:00:00`);
+    if (scope === "day") return [anchor];
+    if (scope === "week") return weekDays;
+
+    const monthStart = startOfMonth(anchor);
+    const monthEnd = endOfMonth(anchor);
+    const days: Date[] = [];
+    for (let d = new Date(monthStart); d <= monthEnd; d = addDays(d, 1)) {
+      days.push(new Date(d));
+    }
+    return days;
+  }, [scope, selectedDate, weekDays]);
+
+  const dayEvents = useMemo(
+    () => (eventsByDay.get(selectedDate) ?? []).filter((item) => toDayString(new Date(item.plannedStartAt)) === selectedDate),
+    [eventsByDay, selectedDate]
+  );
+
+  const cards = useMemo(() => buildDayLayout(dayEvents), [dayEvents]);
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
+
+  const monthLabel = useMemo(() => {
+    const d = new Date(`${selectedDate}T00:00:00`);
+    return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+  }, [selectedDate]);
 
   return (
     <div className="grid">
       <section className="card">
         <h1 style={{ marginTop: 0 }}>Расписание</h1>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-          {weekDays.map((day) => {
-            const value = toDayString(day);
-            return (
-              <button
-                key={value}
-                type="button"
-                className={selectedDate === value ? "" : "secondary"}
-                onClick={() => setSelectedDate(value)}
-              >
-                {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}
-              </button>
-            );
-          })}
-        </div>
-
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <button
-            type="button"
-            className={viewMode === "calendar" ? "" : "secondary"}
-            onClick={() => setViewMode("calendar")}
-          >
+          <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>
             Календарь
           </button>
-          <button
-            type="button"
-            className={viewMode === "list" ? "" : "secondary"}
-            onClick={() => setViewMode("list")}
-          >
+          <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")}>
             Список
           </button>
 
-          <button
-            type="button"
-            className={categoryFilters.has("individual") ? "" : "secondary"}
-            onClick={() => toggleCategory("individual")}
-          >
+          <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>
+            День
+          </button>
+          <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>
+            Неделя
+          </button>
+          <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>
+            Месяц
+          </button>
+
+          <button type="button" className={categoryFilters.has("individual") ? "" : "secondary"} onClick={() => toggleCategory("individual")}>
             Индивидуальные
           </button>
-          <button
-            type="button"
-            className={categoryFilters.has("group") ? "" : "secondary"}
-            onClick={() => toggleCategory("group")}
-          >
+          <button type="button" className={categoryFilters.has("group") ? "" : "secondary"} onClick={() => toggleCategory("group")}>
             Групповые
           </button>
-          <button
-            type="button"
-            className={categoryFilters.has("administrative") ? "" : "secondary"}
-            onClick={() => toggleCategory("administrative")}
-          >
+          <button type="button" className={categoryFilters.has("administrative") ? "" : "secondary"} onClick={() => toggleCategory("administrative")}>
             Административные
           </button>
 
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 240 }}>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
             <option value="">Все статусы</option>
             <option value="PLANNED">Запланировано</option>
             <option value="COMPLETED">Состоялось</option>
             <option value="CANCELED">Не состоялось</option>
           </select>
-        </div>
 
+          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ maxWidth: 180 }} />
+        </div>
         {loading ? <p>Загрузка...</p> : null}
         {error ? <p className="error">{error}</p> : null}
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Создать занятие</h2>
+        <h2 style={{ marginTop: 0 }}>Создать занятие на выбранную дату</h2>
         <form className="grid cols-2" onSubmit={createEvent}>
           <label>
             Название
@@ -412,23 +443,14 @@ export default function EventsPage() {
           </label>
           <label>
             Длительность (мин)
-            <input
-              type="number"
-              min={30}
-              max={180}
-              step={15}
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(e.target.value)}
-            />
+            <input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
           </label>
           <label>
             Преподаватель
             <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
               <option value="">Не выбран</option>
               {teachers.map((item) => (
-                <option key={item.id} value={item.user.id}>
-                  {item.user.fullName}
-                </option>
+                <option key={item.id} value={item.user.id}>{item.user.fullName}</option>
               ))}
             </select>
           </label>
@@ -437,9 +459,7 @@ export default function EventsPage() {
             <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
               <option value="">Не выбран</option>
               {students.map((item) => (
-                <option key={item.id} value={item.user.id}>
-                  {item.user.fullName}
-                </option>
+                <option key={item.id} value={item.user.id}>{item.user.fullName}</option>
               ))}
             </select>
           </label>
@@ -449,24 +469,19 @@ export default function EventsPage() {
         </form>
       </section>
 
-      {viewMode === "calendar" ? (
+      {viewMode === "calendar" && scope === "day" ? (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>
-            Календарь: {new Date(`${selectedDate}T00:00:00`).toLocaleDateString("ru-RU")}
-          </h2>
+          <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
           <div style={{ position: "relative", height: calendarHeight, border: "1px solid var(--border)", borderRadius: 12 }}>
             {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
               const hour = SLOT_START_HOUR + idx;
               const top = idx * 60 * PIXELS_PER_MINUTE;
               return (
                 <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)" }}>
-                  <span style={{ position: "absolute", left: 8, top: -10, fontSize: 11, color: "var(--muted)" }}>
-                    {String(hour).padStart(2, "0")}:00
-                  </span>
+                  <span style={{ position: "absolute", left: 8, top: -10, fontSize: 11, color: "var(--muted)" }}>{String(hour).padStart(2, "0")}:00</span>
                 </div>
               );
             })}
-
             <div style={{ position: "absolute", left: 70, right: 10, top: 0, bottom: 0 }}>
               {cards.map((card) => (
                 <article
@@ -487,29 +502,93 @@ export default function EventsPage() {
                   <strong style={{ display: "block", fontSize: 13 }}>{card.event.title}</strong>
                   <span style={{ fontSize: 12, display: "block" }}>{card.event.subject || "Без предмета"}</span>
                   <span style={{ fontSize: 11, color: "var(--muted)", display: "block" }}>
-                    {card.start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                    {card.end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    {card.start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - {card.end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  <span className="pill" style={{ marginTop: 4 }}>{statusLabel(card.event.status)}</span>
                 </article>
               ))}
-              {!cards.length ? (
-                <p style={{ position: "absolute", top: 10, left: 8, color: "var(--muted)" }}>На эту дату занятий нет.</p>
-              ) : null}
             </div>
           </div>
         </section>
-      ) : (
+      ) : null}
+
+      {viewMode === "calendar" && scope === "month" ? (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>Список по дням</h2>
-          <div className="grid">
+          <h2 style={{ marginTop: 0 }}>Календарь месяца: {monthLabel}</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
+            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((name) => (
+              <strong key={name} style={{ textAlign: "center", color: "var(--muted)" }}>{name}</strong>
+            ))}
+            {monthGridDays.map((day) => {
+              const key = toDayString(day);
+              const items = eventsByDay.get(key) ?? [];
+              const isActive = key === selectedDate;
+              const inCurrentMonth = day.getMonth() === new Date(`${selectedDate}T00:00:00`).getMonth();
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className="secondary"
+                  onClick={() => setSelectedDate(key)}
+                  style={{
+                    textAlign: "left",
+                    minHeight: 110,
+                    padding: 8,
+                    borderColor: isActive ? "var(--accent)" : "var(--border)",
+                    opacity: inCurrentMonth ? 1 : 0.6
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
+                  {items.slice(0, 3).map((item) => (
+                    <div key={item.id} style={{ fontSize: 11, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                    </div>
+                  ))}
+                  {items.length > 3 ? <div style={{ fontSize: 11, color: "var(--muted)" }}>+ еще {items.length - 3}</div> : null}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {viewMode === "calendar" && scope === "week" ? (
+        <section className="card">
+          <h2 style={{ marginTop: 0 }}>Календарь недели</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
             {weekDays.map((day) => {
               const key = toDayString(day);
               const items = eventsByDay.get(key) ?? [];
               return (
-                <article key={key} className="card" style={{ margin: 0 }}>
+                <article key={key} className="card" style={{ margin: 0, padding: 10 }}>
+                  <h3 style={{ marginTop: 0, fontSize: 14 }}>
+                    {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
+                  </h3>
+                  {items.slice(0, 6).map((item) => (
+                    <div key={item.id} style={{ fontSize: 12, marginBottom: 6 }}>
+                      {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                    </div>
+                  ))}
+                  {!items.length ? <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет событий</div> : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {viewMode === "list" ? (
+        <section className="card">
+          <h2 style={{ marginTop: 0 }}>
+            Список по дням ({scope === "day" ? "день" : scope === "week" ? "неделя" : "месяц"})
+          </h2>
+          <div className="grid">
+            {listDays.map((dayDate) => {
+              const day = toDayString(dayDate);
+              const items = eventsByDay.get(day) ?? [];
+              return (
+                <article key={day} className="card" style={{ margin: 0 }}>
                   <h3 style={{ marginTop: 0 }}>
-                    {day.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
+                    {dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
                   </h3>
                   {items.length ? (
                     <table>
@@ -527,14 +606,8 @@ export default function EventsPage() {
                           const end = new Date(item.plannedEndAt);
                           return (
                             <tr key={item.id}>
-                              <td>
-                                {start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} -{" "}
-                                {end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-                              </td>
-                              <td>
-                                <strong>{item.title}</strong>
-                                <div style={{ color: "var(--muted)", fontSize: 12 }}>{item.subject || "Без предмета"}</div>
-                              </td>
+                              <td>{start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - {end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</td>
+                              <td><strong>{item.title}</strong><div style={{ color: "var(--muted)", fontSize: 12 }}>{item.subject || "Без предмета"}</div></td>
                               <td>{typeLabel(item.activityType)}</td>
                               <td>{statusLabel(item.status)}</td>
                             </tr>
@@ -550,7 +623,7 @@ export default function EventsPage() {
             })}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }
