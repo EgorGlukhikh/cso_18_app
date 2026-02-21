@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { badRequest, notFound, serverError } from "@/lib/http";
@@ -12,16 +12,16 @@ const patchSchema = z.object({
   comment: z.string().max(5000).optional()
 });
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { params: Promise<{ parentProfileId: string }> };
 
 export async function GET(_: NextRequest, context: Params) {
   try {
     const auth = await requireAdminUser();
     if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-    const { id } = await context.params;
+    const { parentProfileId } = await context.params;
     const parent = await db.parentProfile.findUnique({
-      where: { id },
+      where: { id: parentProfileId },
       include: {
         user: true,
         studentLinks: { include: { student: { include: { user: true } } } }
@@ -39,10 +39,10 @@ export async function PATCH(request: NextRequest, context: Params) {
     const auth = await requireAdminUser();
     if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status });
 
-    const { id } = await context.params;
+    const { parentProfileId } = await context.params;
     const payload = patchSchema.parse(await request.json());
 
-    const existing = await db.parentProfile.findUnique({ where: { id }, include: { user: true } });
+    const existing = await db.parentProfile.findUnique({ where: { id: parentProfileId }, include: { user: true } });
     if (!existing) return notFound("Родитель не найден");
 
     if (payload.fullName !== undefined || payload.phone !== undefined) {
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest, context: Params) {
     }
 
     const updated = await db.parentProfile.update({
-      where: { id },
+      where: { id: parentProfileId },
       data: {
         ...(payload.telegramEnabled !== undefined ? { telegramEnabled: payload.telegramEnabled } : {}),
         ...(payload.morningReminderHour !== undefined ? { morningReminderHour: payload.morningReminderHour } : {}),
