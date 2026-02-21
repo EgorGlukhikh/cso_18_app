@@ -208,8 +208,8 @@ export default function EventsPage() {
   const [activityType, setActivityType] = useState<ActivityType>("INDIVIDUAL_LESSON");
   const [startTime, setStartTime] = useState("10:00");
   const [durationHours, setDurationHours] = useState("1");
-  const [teacherId, setTeacherId] = useState("");
-  const [studentId, setStudentId] = useState("");
+  const [teacherIds, setTeacherIds] = useState<string[]>([]);
+  const [studentIds, setStudentIds] = useState<string[]>([]);
 
   const [activeEvent, setActiveEvent] = useState<EventItem | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -247,13 +247,13 @@ export default function EventsPage() {
     if (teachersRes.ok) {
       const payload = (await teachersRes.json()) as { items: UserItem[] };
       setTeachers(payload.items ?? []);
-      if (payload.items?.[0]) setTeacherId(payload.items[0].user.id);
+      if (payload.items?.[0]) setTeacherIds([payload.items[0].user.id]);
     }
 
     if (studentsRes.ok) {
       const payload = (await studentsRes.json()) as { items: UserItem[] };
       setStudents(payload.items ?? []);
-      if (payload.items?.[0]) setStudentId(payload.items[0].user.id);
+      if (payload.items?.[0]) setStudentIds([payload.items[0].user.id]);
     }
 
     if (subjectsRes.ok) {
@@ -300,6 +300,13 @@ export default function EventsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, status]);
 
+  useEffect(() => {
+    if (activityType !== "GROUP_LESSON") {
+      setTeacherIds((prev) => (prev.length ? [prev[0]] : []));
+      setStudentIds((prev) => (prev.length ? [prev[0]] : []));
+    }
+  }, [activityType]);
+
   function toggleCategory(filter: CategoryFilter) {
     setCategoryFilters((prev) => {
       const next = new Set(prev);
@@ -337,10 +344,15 @@ export default function EventsPage() {
     start.setHours(h || 0, m || 0, 0, 0);
     const end = new Date(start.getTime() + Number(durationHours || "1") * 60 * 60000);
 
+    const selectedTeacherIds =
+      activityType === "GROUP_LESSON" ? teacherIds : teacherIds.slice(0, 1);
+    const selectedStudentIds =
+      activityType === "GROUP_LESSON" ? studentIds : studentIds.slice(0, 1);
+
     const participants = [
-      teacherId ? { userId: teacherId, participantRole: "TEACHER" as ParticipantRole } : null,
-      studentId ? { userId: studentId, participantRole: "STUDENT" as ParticipantRole } : null
-    ].filter(Boolean);
+      ...selectedTeacherIds.map((id) => ({ userId: id, participantRole: "TEACHER" as ParticipantRole })),
+      ...selectedStudentIds.map((id) => ({ userId: id, participantRole: "STUDENT" as ParticipantRole }))
+    ];
 
     const response = await fetch("/api/events", {
       method: "POST",
@@ -732,17 +744,45 @@ export default function EventsPage() {
               </label>
               <label>
                 Преподаватель
-                <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
-                  <option value="">Не выбран</option>
-                  {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-                </select>
+                {activityType === "GROUP_LESSON" ? (
+                  <select
+                    multiple
+                    size={4}
+                    value={teacherIds}
+                    onChange={(e) => setTeacherIds(Array.from(e.target.selectedOptions).map((option) => option.value))}
+                  >
+                    {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                  </select>
+                ) : (
+                  <select
+                    value={teacherIds[0] ?? ""}
+                    onChange={(e) => setTeacherIds(e.target.value ? [e.target.value] : [])}
+                  >
+                    <option value="">Не выбран</option>
+                    {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                  </select>
+                )}
               </label>
               <label>
                 Ученик
-                <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-                  <option value="">Не выбран</option>
-                  {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-                </select>
+                {activityType === "GROUP_LESSON" ? (
+                  <select
+                    multiple
+                    size={4}
+                    value={studentIds}
+                    onChange={(e) => setStudentIds(Array.from(e.target.selectedOptions).map((option) => option.value))}
+                  >
+                    {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                  </select>
+                ) : (
+                  <select
+                    value={studentIds[0] ?? ""}
+                    onChange={(e) => setStudentIds(e.target.value ? [e.target.value] : [])}
+                  >
+                    <option value="">Не выбран</option>
+                    {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                  </select>
+                )}
               </label>
               <div style={{ display: "flex", alignItems: "end" }}><button type="submit">Создать</button></div>
             </form>
