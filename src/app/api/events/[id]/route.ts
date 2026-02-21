@@ -37,6 +37,7 @@ export async function PATCH(request: NextRequest, context: Params) {
       where: { id },
       data: {
         ...(payload.title ? { title: payload.title } : {}),
+        ...(payload.subject !== undefined ? { subject: payload.subject } : {}),
         ...(payload.activityType ? { activityType: payload.activityType } : {}),
         ...(payload.plannedStartAt ? { plannedStartAt: payload.plannedStartAt } : {}),
         ...(payload.plannedEndAt ? { plannedEndAt: payload.plannedEndAt } : {}),

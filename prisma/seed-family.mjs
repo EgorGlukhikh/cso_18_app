@@ -1,5 +1,6 @@
 import { UserRole } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
+import { randomBytes, scryptSync } from "node:crypto";
 
 const prisma = new PrismaClient();
 
@@ -58,6 +59,12 @@ const psychologists = [
     email: "bikuzina.psychologist@example.com"
   }
 ];
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
 
 async function upsertParent(parent) {
   const user = await prisma.user.upsert({
@@ -180,6 +187,22 @@ async function upsertPsychologist(psychologist) {
 }
 
 async function main() {
+  await prisma.user.upsert({
+    where: { email: "admin@admin.ru" },
+    update: {
+      fullName: "Администратор CRM",
+      role: UserRole.ADMIN,
+      passwordHash: hashPassword("12345")
+    },
+    create: {
+      email: "admin@admin.ru",
+      fullName: "Администратор CRM",
+      role: UserRole.ADMIN,
+      passwordHash: hashPassword("12345"),
+      timezone: "Europe/Moscow"
+    }
+  });
+
   const parentProfiles = [];
   for (const parent of parents) {
     parentProfiles.push(await upsertParent(parent));
@@ -250,4 +273,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-

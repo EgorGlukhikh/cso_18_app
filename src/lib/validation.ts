@@ -11,6 +11,7 @@ const participantSchema = z.object({
 
 const eventBaseSchema = z.object({
   title: z.string().min(1),
+  subject: z.string().trim().max(255).optional(),
   activityType: z.nativeEnum(ActivityType),
   plannedStartAt: isoDate,
   plannedEndAt: isoDate,

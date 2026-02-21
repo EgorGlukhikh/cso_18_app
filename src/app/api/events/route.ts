@@ -1,9 +1,10 @@
-import { EventStatus } from "@prisma/client";
+﻿import { ActivityType, EventStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
 import { computeBillableHours } from "@/lib/hours";
 import { badRequest, serverError } from "@/lib/http";
+import { validateLessonParallelism } from "@/lib/schedule-rules";
 import { eventCreateSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -28,7 +29,18 @@ export async function GET(request: NextRequest) {
     const items = await db.event.findMany({
       where,
       include: {
-        cancelReason: true
+        cancelReason: true,
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                role: true
+              }
+            }
+          }
+        }
       },
       orderBy: { plannedStartAt: "asc" }
     });
@@ -39,14 +51,52 @@ export async function GET(request: NextRequest) {
   }
 }
 
+function isLessonType(type: ActivityType) {
+  return type === ActivityType.INDIVIDUAL_LESSON || type === ActivityType.GROUP_LESSON;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const payload = eventCreateSchema.parse(body);
 
+    if (isLessonType(payload.activityType)) {
+      const overlapping = await db.event.findMany({
+        where: {
+          status: { in: [EventStatus.PLANNED, EventStatus.COMPLETED] },
+          plannedStartAt: { lt: payload.plannedEndAt },
+          plannedEndAt: { gt: payload.plannedStartAt },
+          activityType: { in: [ActivityType.INDIVIDUAL_LESSON, ActivityType.GROUP_LESSON] }
+        },
+        select: {
+          plannedStartAt: true,
+          plannedEndAt: true,
+          activityType: true
+        }
+      });
+
+      const conflict = validateLessonParallelism(
+        overlapping.map((item) => ({
+          start: item.plannedStartAt,
+          end: item.plannedEndAt,
+          activityType: item.activityType
+        })),
+        {
+          start: payload.plannedStartAt,
+          end: payload.plannedEndAt,
+          activityType: payload.activityType
+        }
+      );
+
+      if (conflict) {
+        return badRequest(conflict);
+      }
+    }
+
     const event = await db.event.create({
       data: {
         title: payload.title,
+        subject: payload.subject,
         activityType: payload.activityType,
         plannedStartAt: payload.plannedStartAt,
         plannedEndAt: payload.plannedEndAt,
@@ -76,4 +126,3 @@ export async function POST(request: NextRequest) {
     return serverError(error);
   }
 }
-
