@@ -33,6 +33,8 @@ export async function POST(request: NextRequest, context: Params) {
         status: payload.status,
         cancelReasonId: payload.status === EventStatus.CANCELED ? payload.cancelReasonId : null,
         cancelComment: payload.status === EventStatus.CANCELED ? payload.cancelComment ?? null : null,
+        completionComment:
+          payload.status === EventStatus.COMPLETED ? payload.completionComment?.trim() ?? null : null,
         factStartAt: payload.status === EventStatus.COMPLETED ? payload.factStartAt ?? event.plannedStartAt : null,
         factEndAt: payload.status === EventStatus.COMPLETED ? payload.factEndAt ?? event.plannedEndAt : null,
         billableHours: computeBillableHours(payload.status, event.plannedHours)

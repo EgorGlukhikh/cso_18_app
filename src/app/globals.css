@@ -1,5 +1,5 @@
 ﻿:root {
-  --font-ui: var(--font-inter), "Inter", "Segoe UI", sans-serif;
+  --font-ui: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
   --bg: #f3f6fb;
   --surface: #ffffff;
@@ -28,6 +28,7 @@ html[data-theme="dark"] {
 
 * {
   box-sizing: border-box;
+  font-family: var(--font-ui);
 }
 
 html,
@@ -78,6 +79,47 @@ code {
 
 .app-header-inner strong {
   margin-right: 6px;
+}
+
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.quick-link {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.quick-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(22, 35, 52, 0.12);
+}
+
+.quick-link .icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.icon-switch {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.icon-switch button {
+  min-width: auto;
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
 }
 
 .grid {
@@ -176,4 +218,3 @@ button.secondary {
     gap: 8px;
   }
 }
-

@@ -13,7 +13,8 @@ type ActivityType =
 
 type ParticipantRole = "STUDENT" | "TEACHER" | "CURATOR" | "PSYCHOLOGIST" | "PARENT";
 type ViewMode = "calendar" | "list";
-type CalendarScope = "day" | "week" | "month";
+type ScopeMode = "day" | "week" | "month";
+type DateFilter = "current_month" | "current_week" | "day" | "custom";
 type CategoryFilter = "individual" | "group" | "administrative";
 
 type EventItem = {
@@ -24,6 +25,7 @@ type EventItem = {
   status: "PLANNED" | "COMPLETED" | "CANCELED";
   plannedStartAt: string;
   plannedEndAt: string;
+  completionComment: string | null;
   participants: Array<{
     id: string;
     participantRole: ParticipantRole;
@@ -31,10 +33,7 @@ type EventItem = {
   }>;
 };
 
-type UserItem = {
-  id: string;
-  user: { id: string; fullName: string; email: string };
-};
+type UserItem = { id: string; user: { id: string; fullName: string } };
 
 type CalendarCard = {
   event: EventItem;
@@ -48,7 +47,7 @@ type CalendarCard = {
 
 const SLOT_START_HOUR = 8;
 const SLOT_END_HOUR = 21;
-const PIXELS_PER_MINUTE = 1.2;
+const PIXELS_PER_MINUTE = 1.1;
 
 function toDayString(value: Date) {
   return value.toLocaleDateString("sv-SE");
@@ -84,21 +83,6 @@ function endOfMonth(base: Date) {
   return date;
 }
 
-function getScopeRange(anchor: string, scope: CalendarScope) {
-  const base = new Date(`${anchor}T00:00:00`);
-  if (scope === "day") {
-    return { from: toDayString(base), to: toDayString(base) };
-  }
-  if (scope === "week") {
-    const monday = startOfWeekMonday(base);
-    const sunday = addDays(monday, 6);
-    return { from: toDayString(monday), to: toDayString(sunday) };
-  }
-  const monthStart = startOfMonth(base);
-  const monthEnd = endOfMonth(base);
-  return { from: toDayString(monthStart), to: toDayString(monthEnd) };
-}
-
 function overlaps(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && bStart < aEnd;
 }
@@ -128,12 +112,23 @@ function typeLabel(type: ActivityType) {
   return map[type];
 }
 
+function colorForType(type: ActivityType) {
+  const category = getCategory(type);
+  if (category === "individual") {
+    return { border: "#2d7dff", bg: "#e9f2ff" };
+  }
+  if (category === "group") {
+    return { border: "#20a35a", bg: "#eaf9f0" };
+  }
+  return { border: "#f29f3f", bg: "#fff4e6" };
+}
+
 function buildDayLayout(events: EventItem[]) {
   const dayEvents = [...events]
     .map((event) => ({ event, start: new Date(event.plannedStartAt), end: new Date(event.plannedEndAt) }))
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-  const cards: Array<CalendarCard> = [];
+  const cards: CalendarCard[] = [];
   const active: Array<{ end: number; column: 0 | 1 }> = [];
 
   for (const item of dayEvents) {
@@ -172,10 +167,23 @@ function buildDayLayout(events: EventItem[]) {
   return cards;
 }
 
+function toDateTimeLocalString(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function EventsPage() {
-  const [selectedDate, setSelectedDate] = useState(toDayString(new Date()));
+  const today = useMemo(() => new Date(), []);
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
-  const [scope, setScope] = useState<CalendarScope>("month");
+  const [scope, setScope] = useState<ScopeMode>("month");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("current_month");
+  const [dayFilterDate, setDayFilterDate] = useState(toDayString(today));
+  const [customFrom, setCustomFrom] = useState(toDayString(today));
+  const [customTo, setCustomTo] = useState(toDayString(today));
   const [status, setStatus] = useState("");
   const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(
     new Set(["individual", "group", "administrative"])
@@ -196,24 +204,30 @@ export default function EventsPage() {
   const [teacherId, setTeacherId] = useState("");
   const [studentId, setStudentId] = useState("");
 
-  const weekDays = useMemo(() => {
-    const monday = startOfWeekMonday(new Date(`${selectedDate}T00:00:00`));
-    return Array.from({ length: 7 }, (_, idx) => addDays(monday, idx));
-  }, [selectedDate]);
+  const [activeEvent, setActiveEvent] = useState<EventItem | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSubject, setEditSubject] = useState("");
+  const [editStart, setEditStart] = useState("");
+  const [editEnd, setEditEnd] = useState("");
+  const [editStatus, setEditStatus] = useState<EventItem["status"]>("PLANNED");
+  const [editCompletionComment, setEditCompletionComment] = useState("");
 
-  const monthGridDays = useMemo(() => {
-    const anchor = new Date(`${selectedDate}T00:00:00`);
-    const monthStart = startOfMonth(anchor);
-    const monthEnd = endOfMonth(anchor);
-    const gridStart = startOfWeekMonday(monthStart);
-    const gridEnd = addDays(startOfWeekMonday(monthEnd), 6);
-
-    const days: Date[] = [];
-    for (let d = new Date(gridStart); d <= gridEnd; d = addDays(d, 1)) {
-      days.push(new Date(d));
+  const range = useMemo(() => {
+    const now = new Date();
+    if (dateFilter === "current_month") {
+      return { from: toDayString(startOfMonth(now)), to: toDayString(endOfMonth(now)) };
     }
-    return days;
-  }, [selectedDate]);
+    if (dateFilter === "current_week") {
+      const monday = startOfWeekMonday(now);
+      const sunday = addDays(monday, 6);
+      return { from: toDayString(monday), to: toDayString(sunday) };
+    }
+    if (dateFilter === "day") {
+      return { from: dayFilterDate, to: dayFilterDate };
+    }
+    return { from: customFrom, to: customTo };
+  }, [dateFilter, dayFilterDate, customFrom, customTo]);
 
   async function loadUsers() {
     const [teachersRes, studentsRes, meRes] = await Promise.all([
@@ -244,8 +258,7 @@ export default function EventsPage() {
     setLoading(true);
     setError("");
 
-    const { from, to } = getScopeRange(selectedDate, scope);
-    const query = new URLSearchParams({ from, to });
+    const query = new URLSearchParams({ from: range.from, to: range.to });
     if (status) query.set("status", status);
 
     const response = await fetch(`/api/events?${query.toString()}`);
@@ -267,7 +280,16 @@ export default function EventsPage() {
   useEffect(() => {
     loadEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, status, scope]);
+  }, [range, status]);
+
+  function toggleCategory(filter: CategoryFilter) {
+    setCategoryFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(filter)) next.delete(filter);
+      else next.add(filter);
+      return next;
+    });
+  }
 
   async function createEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -278,8 +300,9 @@ export default function EventsPage() {
       return;
     }
 
+    const baseDate = dateFilter === "day" ? dayFilterDate : toDayString(new Date());
     const [h, m] = startTime.split(":").map(Number);
-    const start = new Date(`${selectedDate}T00:00:00`);
+    const start = new Date(`${baseDate}T00:00:00`);
     start.setHours(h || 0, m || 0, 0, 0);
     const end = new Date(start.getTime() + Number(durationMinutes || "45") * 60000);
 
@@ -313,123 +336,212 @@ export default function EventsPage() {
     await loadEvents();
   }
 
-  function toggleCategory(filter: CategoryFilter) {
-    setCategoryFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(filter)) next.delete(filter);
-      else next.add(filter);
-      return next;
-    });
-  }
-
   const filteredEvents = useMemo(
-    () =>
-      events.filter((item) => {
-        const category = getCategory(item.activityType);
-        return categoryFilters.has(category);
-      }),
+    () => events.filter((item) => categoryFilters.has(getCategory(item.activityType))),
     [events, categoryFilters]
   );
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, EventItem[]>();
     for (const event of filteredEvents) {
-      const day = toDayString(new Date(event.plannedStartAt));
-      if (!map.has(day)) map.set(day, []);
-      map.get(day)?.push(event);
+      const key = toDayString(new Date(event.plannedStartAt));
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)?.push(event);
     }
 
-    for (const [day, items] of map.entries()) {
+    for (const [key, items] of map.entries()) {
       items.sort((a, b) => new Date(a.plannedStartAt).getTime() - new Date(b.plannedStartAt).getTime());
-      map.set(day, items);
+      map.set(key, items);
     }
 
     return map;
   }, [filteredEvents]);
 
-  const listDays = useMemo(() => {
-    const anchor = new Date(`${selectedDate}T00:00:00`);
-    if (scope === "day") return [anchor];
-    if (scope === "week") return weekDays;
-
-    const monthStart = startOfMonth(anchor);
-    const monthEnd = endOfMonth(anchor);
+  const rangeDays = useMemo(() => {
+    const start = new Date(`${range.from}T00:00:00`);
+    const end = new Date(`${range.to}T00:00:00`);
     const days: Date[] = [];
-    for (let d = new Date(monthStart); d <= monthEnd; d = addDays(d, 1)) {
+    for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
       days.push(new Date(d));
     }
     return days;
-  }, [scope, selectedDate, weekDays]);
+  }, [range]);
 
-  const dayEvents = useMemo(
-    () => (eventsByDay.get(selectedDate) ?? []).filter((item) => toDayString(new Date(item.plannedStartAt)) === selectedDate),
-    [eventsByDay, selectedDate]
-  );
+  const dayKey = useMemo(() => {
+    if (dateFilter === "day") return dayFilterDate;
+    return toDayString(new Date());
+  }, [dateFilter, dayFilterDate]);
 
-  const cards = useMemo(() => buildDayLayout(dayEvents), [dayEvents]);
+  const dayEvents = useMemo(() => eventsByDay.get(dayKey) ?? [], [eventsByDay, dayKey]);
+  const dayCards = useMemo(() => buildDayLayout(dayEvents), [dayEvents]);
+
+  const weekDays = useMemo(() => {
+    const base = new Date(`${dayKey}T00:00:00`);
+    const monday = startOfWeekMonday(base);
+    return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  }, [dayKey]);
+
+  const monthGridDays = useMemo(() => {
+    const base = new Date(`${dayKey}T00:00:00`);
+    const monthStart = startOfMonth(base);
+    const monthEnd = endOfMonth(base);
+    const gridStart = startOfWeekMonday(monthStart);
+    const gridEnd = addDays(startOfWeekMonday(monthEnd), 6);
+    const days: Date[] = [];
+    for (let d = new Date(gridStart); d <= gridEnd; d = addDays(d, 1)) {
+      days.push(new Date(d));
+    }
+    return days;
+  }, [dayKey]);
+
+  function openEvent(item: EventItem) {
+    setActiveEvent(item);
+    setEditMode(false);
+    setEditTitle(item.title);
+    setEditSubject(item.subject ?? "");
+    setEditStart(toDateTimeLocalString(new Date(item.plannedStartAt)));
+    setEditEnd(toDateTimeLocalString(new Date(item.plannedEndAt)));
+    setEditStatus(item.status);
+    setEditCompletionComment(item.completionComment ?? "");
+  }
+
+  async function saveEventChanges() {
+    if (!activeEvent) return;
+    if (editStatus === "COMPLETED" && !editCompletionComment.trim()) {
+      setError("Для статуса 'Состоялось' заполните мини-отчет преподавателя");
+      return;
+    }
+
+    const patchRes = await fetch(`/api/events/${activeEvent.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: editTitle,
+        subject: editSubject,
+        plannedStartAt: new Date(editStart).toISOString(),
+        plannedEndAt: new Date(editEnd).toISOString()
+      })
+    });
+
+    if (!patchRes.ok) {
+      setError("Не удалось сохранить изменения события");
+      return;
+    }
+
+    if (editStatus !== activeEvent.status) {
+      const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: editStatus,
+          completionComment: editStatus === "COMPLETED" ? editCompletionComment.trim() : undefined
+        })
+      });
+      if (!statusRes.ok) {
+        const payload = (await statusRes.json()) as { error?: string };
+        setError(payload.error ?? "Статус не обновлен");
+        return;
+      }
+    } else if (editStatus === "COMPLETED") {
+      const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "COMPLETED",
+          completionComment: editCompletionComment.trim()
+        })
+      });
+      if (!statusRes.ok) {
+        const payload = (await statusRes.json()) as { error?: string };
+        setError(payload.error ?? "Не удалось сохранить мини-отчет");
+        return;
+      }
+    }
+
+    await loadEvents();
+    setActiveEvent(null);
+  }
+
+  async function copyEventLink() {
+    if (!activeEvent) return;
+    const url = `${window.location.origin}/events?eventId=${activeEvent.id}`;
+    await navigator.clipboard.writeText(url);
+  }
+
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
-
-  const monthLabel = useMemo(() => {
-    const d = new Date(`${selectedDate}T00:00:00`);
-    return d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
-  }, [selectedDate]);
 
   return (
     <div className="grid">
       <section className="card">
-        <h1 style={{ marginTop: 0 }}>Расписание</h1>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>
-            Календарь
-          </button>
-          <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")}>
-            Список
-          </button>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={{ marginTop: 0, marginBottom: 8 }}>Расписание</h1>
+            <div className="icon-switch">
+              <button type="button" className={categoryFilters.has("individual") ? "" : "secondary"} onClick={() => toggleCategory("individual")}>
+                <span>🔵</span> Индивидуальные
+              </button>
+              <button type="button" className={categoryFilters.has("group") ? "" : "secondary"} onClick={() => toggleCategory("group")}>
+                <span>🟢</span> Групповые
+              </button>
+              <button type="button" className={categoryFilters.has("administrative") ? "" : "secondary"} onClick={() => toggleCategory("administrative")}>
+                <span>🟠</span> Административные
+              </button>
+            </div>
+          </div>
 
-          <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>
-            День
-          </button>
-          <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>
-            Неделя
-          </button>
-          <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>
-            Месяц
-          </button>
+          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
+            <div className="icon-switch">
+              <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>
+                <span>🗓️</span>
+              </button>
+              <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")}>
+                <span>📋</span>
+              </button>
+              <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>
+                День
+              </button>
+              <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>
+                Неделя
+              </button>
+              <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>
+                Месяц
+              </button>
+            </div>
 
-          <button type="button" className={categoryFilters.has("individual") ? "" : "secondary"} onClick={() => toggleCategory("individual")}>
-            Индивидуальные
-          </button>
-          <button type="button" className={categoryFilters.has("group") ? "" : "secondary"} onClick={() => toggleCategory("group")}>
-            Групповые
-          </button>
-          <button type="button" className={categoryFilters.has("administrative") ? "" : "secondary"} onClick={() => toggleCategory("administrative")}>
-            Административные
-          </button>
-
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
-            <option value="">Все статусы</option>
-            <option value="PLANNED">Запланировано</option>
-            <option value="COMPLETED">Состоялось</option>
-            <option value="CANCELED">Не состоялось</option>
-          </select>
-
-          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} style={{ maxWidth: 180 }} />
+            <div className="icon-switch">
+              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} style={{ maxWidth: 220 }}>
+                <option value="current_month">Текущий месяц</option>
+                <option value="current_week">Текущая неделя</option>
+                <option value="day">День</option>
+                <option value="custom">Свой период</option>
+              </select>
+              {dateFilter === "day" ? (
+                <input type="date" value={dayFilterDate} onChange={(e) => setDayFilterDate(e.target.value)} style={{ maxWidth: 180 }} />
+              ) : null}
+              {dateFilter === "custom" ? (
+                <>
+                  <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ maxWidth: 180 }} />
+                  <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ maxWidth: 180 }} />
+                </>
+              ) : null}
+              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
+                <option value="">Все статусы</option>
+                <option value="PLANNED">Запланировано</option>
+                <option value="COMPLETED">Состоялось</option>
+                <option value="CANCELED">Не состоялось</option>
+              </select>
+            </div>
+          </div>
         </div>
         {loading ? <p>Загрузка...</p> : null}
         {error ? <p className="error">{error}</p> : null}
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Создать занятие на выбранную дату</h2>
+        <h2 style={{ marginTop: 0 }}>Создать занятие</h2>
         <form className="grid cols-2" onSubmit={createEvent}>
-          <label>
-            Название
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </label>
-          <label>
-            Предмет
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} required />
-          </label>
+          <label>Название<input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
+          <label>Предмет<input value={subject} onChange={(e) => setSubject(e.target.value)} required /></label>
           <label>
             Тип занятия
             <select value={activityType} onChange={(e) => setActivityType(e.target.value as ActivityType)}>
@@ -437,35 +549,23 @@ export default function EventsPage() {
               <option value="GROUP_LESSON">Групповое</option>
             </select>
           </label>
-          <label>
-            Время начала
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
-          </label>
-          <label>
-            Длительность (мин)
-            <input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
-          </label>
+          <label>Время начала<input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></label>
+          <label>Длительность (мин)<input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} /></label>
           <label>
             Преподаватель
             <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
               <option value="">Не выбран</option>
-              {teachers.map((item) => (
-                <option key={item.id} value={item.user.id}>{item.user.fullName}</option>
-              ))}
+              {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
             </select>
           </label>
           <label>
             Ученик
             <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
               <option value="">Не выбран</option>
-              {students.map((item) => (
-                <option key={item.id} value={item.user.id}>{item.user.fullName}</option>
-              ))}
+              {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
             </select>
           </label>
-          <div style={{ display: "flex", alignItems: "end" }}>
-            <button type="submit">Создать</button>
-          </div>
+          <div style={{ display: "flex", alignItems: "end" }}><button type="submit">Создать</button></div>
         </form>
       </section>
 
@@ -483,70 +583,32 @@ export default function EventsPage() {
               );
             })}
             <div style={{ position: "absolute", left: 70, right: 10, top: 0, bottom: 0 }}>
-              {cards.map((card) => (
-                <article
-                  key={card.event.id}
-                  style={{
-                    position: "absolute",
-                    top: card.top,
-                    left: `${card.column * 50}%`,
-                    width: `calc(${card.width}% - 8px)`,
-                    height: card.height,
-                    borderRadius: 10,
-                    border: "1px solid var(--accent)",
-                    background: "color-mix(in srgb, var(--accent) 18%, var(--surface))",
-                    padding: "6px 8px",
-                    overflow: "hidden"
-                  }}
-                >
-                  <strong style={{ display: "block", fontSize: 13 }}>{card.event.title}</strong>
-                  <span style={{ fontSize: 12, display: "block" }}>{card.event.subject || "Без предмета"}</span>
-                  <span style={{ fontSize: 11, color: "var(--muted)", display: "block" }}>
-                    {card.start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - {card.end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                </article>
-              ))}
+              {dayCards.map((card) => {
+                const c = colorForType(card.event.activityType);
+                return (
+                  <article
+                    key={card.event.id}
+                    onClick={() => openEvent(card.event)}
+                    style={{
+                      position: "absolute",
+                      top: card.top,
+                      left: `${card.column * 50}%`,
+                      width: `calc(${card.width}% - 8px)`,
+                      height: card.height,
+                      borderRadius: 10,
+                      border: `1px solid ${c.border}`,
+                      background: c.bg,
+                      padding: "6px 8px",
+                      overflow: "hidden",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <strong style={{ display: "block", fontSize: 13 }}>{card.event.title}</strong>
+                    <span style={{ fontSize: 12, display: "block" }}>{card.event.subject || "Без предмета"}</span>
+                  </article>
+                );
+              })}
             </div>
-          </div>
-        </section>
-      ) : null}
-
-      {viewMode === "calendar" && scope === "month" ? (
-        <section className="card">
-          <h2 style={{ marginTop: 0 }}>Календарь месяца: {monthLabel}</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
-            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((name) => (
-              <strong key={name} style={{ textAlign: "center", color: "var(--muted)" }}>{name}</strong>
-            ))}
-            {monthGridDays.map((day) => {
-              const key = toDayString(day);
-              const items = eventsByDay.get(key) ?? [];
-              const isActive = key === selectedDate;
-              const inCurrentMonth = day.getMonth() === new Date(`${selectedDate}T00:00:00`).getMonth();
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  className="secondary"
-                  onClick={() => setSelectedDate(key)}
-                  style={{
-                    textAlign: "left",
-                    minHeight: 110,
-                    padding: 8,
-                    borderColor: isActive ? "var(--accent)" : "var(--border)",
-                    opacity: inCurrentMonth ? 1 : 0.6
-                  }}
-                >
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
-                  {items.slice(0, 3).map((item) => (
-                    <div key={item.id} style={{ fontSize: 11, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
-                    </div>
-                  ))}
-                  {items.length > 3 ? <div style={{ fontSize: 11, color: "var(--muted)" }}>+ еще {items.length - 3}</div> : null}
-                </button>
-              );
-            })}
           </div>
         </section>
       ) : null}
@@ -560,16 +622,42 @@ export default function EventsPage() {
               const items = eventsByDay.get(key) ?? [];
               return (
                 <article key={key} className="card" style={{ margin: 0, padding: 10 }}>
-                  <h3 style={{ marginTop: 0, fontSize: 14 }}>
-                    {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
-                  </h3>
-                  {items.slice(0, 6).map((item) => (
-                    <div key={item.id} style={{ fontSize: 12, marginBottom: 6 }}>
-                      {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
-                    </div>
-                  ))}
-                  {!items.length ? <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет событий</div> : null}
+                  <h3 style={{ marginTop: 0, fontSize: 14 }}>{day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}</h3>
+                  {items.length ? items.map((item) => {
+                    const c = colorForType(item.activityType);
+                    return (
+                      <button key={item.id} className="secondary" onClick={() => openEvent(item)} style={{ width: "100%", borderColor: c.border, background: c.bg, marginBottom: 6, textAlign: "left" }}>
+                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                      </button>
+                    );
+                  }) : <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет событий</div>}
                 </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      {viewMode === "calendar" && scope === "month" ? (
+        <section className="card">
+          <h2 style={{ marginTop: 0 }}>Календарь месяца</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
+            {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => <strong key={d} style={{ textAlign: "center", color: "var(--muted)" }}>{d}</strong>)}
+            {monthGridDays.map((day) => {
+              const key = toDayString(day);
+              const items = eventsByDay.get(key) ?? [];
+              return (
+                <div key={key} className="card" style={{ margin: 0, padding: 8, minHeight: 120 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
+                  {items.slice(0, 3).map((item) => {
+                    const c = colorForType(item.activityType);
+                    return (
+                      <button key={item.id} className="secondary" onClick={() => openEvent(item)} style={{ width: "100%", borderColor: c.border, background: c.bg, marginBottom: 4, textAlign: "left", fontSize: 11 }}>
+                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>
@@ -578,51 +666,87 @@ export default function EventsPage() {
 
       {viewMode === "list" ? (
         <section className="card">
-          <h2 style={{ marginTop: 0 }}>
-            Список по дням ({scope === "day" ? "день" : scope === "week" ? "неделя" : "месяц"})
-          </h2>
+          <h2 style={{ marginTop: 0 }}>Список по дням</h2>
           <div className="grid">
-            {listDays.map((dayDate) => {
+            {rangeDays.map((dayDate) => {
               const day = toDayString(dayDate);
               const items = eventsByDay.get(day) ?? [];
               return (
                 <article key={day} className="card" style={{ margin: 0 }}>
-                  <h3 style={{ marginTop: 0 }}>
-                    {dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}
-                  </h3>
+                  <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
                   {items.length ? (
                     <table>
-                      <thead>
-                        <tr>
-                          <th>Время</th>
-                          <th>Событие</th>
-                          <th>Тип</th>
-                          <th>Статус</th>
-                        </tr>
-                      </thead>
+                      <thead><tr><th>Время</th><th>Событие</th><th>Тип</th><th>Статус</th></tr></thead>
                       <tbody>
-                        {items.map((item) => {
-                          const start = new Date(item.plannedStartAt);
-                          const end = new Date(item.plannedEndAt);
-                          return (
-                            <tr key={item.id}>
-                              <td>{start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} - {end.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</td>
-                              <td><strong>{item.title}</strong><div style={{ color: "var(--muted)", fontSize: 12 }}>{item.subject || "Без предмета"}</div></td>
-                              <td>{typeLabel(item.activityType)}</td>
-                              <td>{statusLabel(item.status)}</td>
-                            </tr>
-                          );
-                        })}
+                        {items.map((item) => (
+                          <tr key={item.id} onClick={() => openEvent(item)} style={{ cursor: "pointer" }}>
+                            <td>{new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td>{item.title}</td>
+                            <td>{typeLabel(item.activityType)}</td>
+                            <td>{statusLabel(item.status)}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
-                  ) : (
-                    <p style={{ marginBottom: 0, color: "var(--muted)" }}>На этот день событий нет.</p>
-                  )}
+                  ) : <p style={{ color: "var(--muted)", marginBottom: 0 }}>На этот день событий нет.</p>}
                 </article>
               );
             })}
           </div>
         </section>
+      ) : null}
+
+      {activeEvent ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "grid", placeItems: "center", zIndex: 60 }}>
+          <div className="card" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ marginTop: 0 }}>{activeEvent.title}</h2>
+              <button className="secondary" onClick={() => setActiveEvent(null)}>Закрыть</button>
+            </div>
+
+            <p><strong>Статус:</strong> {statusLabel(activeEvent.status)}</p>
+            <p><strong>Тип:</strong> {typeLabel(activeEvent.activityType)}</p>
+            <p><strong>Предмет:</strong> {activeEvent.subject || "-"}</p>
+            <p><strong>Мини-отчет преподавателя:</strong> {activeEvent.completionComment || "-"}</p>
+            <p><strong>Дата и время:</strong> {new Date(activeEvent.plannedStartAt).toLocaleString("ru-RU")} - {new Date(activeEvent.plannedEndAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</p>
+            <p><strong>Студенты:</strong> {activeEvent.participants.filter((p) => p.participantRole === "STUDENT").map((p) => p.user.fullName).join(", ") || "-"}</p>
+            <p><strong>Ответственный / педагог:</strong> {activeEvent.participants.filter((p) => p.participantRole === "TEACHER" || p.participantRole === "CURATOR").map((p) => p.user.fullName).join(", ") || "-"}</p>
+
+            <div className="icon-switch" style={{ marginTop: 8, marginBottom: 8 }}>
+              <button onClick={() => setEditMode((v) => !v)}>{editMode ? "Скрыть редактирование" : "Редактировать"}</button>
+              <button className="secondary" onClick={copyEventLink}>Поделиться ссылкой</button>
+            </div>
+
+            {editMode ? (
+              <div className="grid cols-2">
+                <label>Название<input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
+                <label>Предмет<input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} /></label>
+                <label>Начало<input type="datetime-local" value={editStart} onChange={(e) => setEditStart(e.target.value)} /></label>
+                <label>Конец<input type="datetime-local" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} /></label>
+                <label>
+                  Статус
+                  <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as EventItem["status"])}>
+                    <option value="PLANNED">Запланировано</option>
+                    <option value="COMPLETED">Состоялось</option>
+                    <option value="CANCELED">Не состоялось</option>
+                  </select>
+                </label>
+                {editStatus === "COMPLETED" ? (
+                  <label style={{ gridColumn: "1 / -1" }}>
+                    Мини-отчет преподавателя (что проходили)
+                    <textarea
+                      value={editCompletionComment}
+                      onChange={(e) => setEditCompletionComment(e.target.value)}
+                      rows={4}
+                      required
+                    />
+                  </label>
+                ) : null}
+                <div style={{ display: "flex", alignItems: "end" }}><button onClick={saveEventChanges}>Сохранить</button></div>
+              </div>
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </div>
   );

@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "BP Education Center",
-  description: "Scheduling and hours accounting"
+  title: "Центр содействия образованию",
+  description: "CRM и расписание центра содействия образованию"
 };
 
 export default function RootLayout({
@@ -24,13 +24,14 @@ export default function RootLayout({
       <body>
         <header className="app-header">
           <div className="container app-header-inner">
-            <strong>Education Center ERP</strong>
+            <strong>Центр содействия образованию</strong>
             <Link href="/">Главная</Link>
-            <Link href="/events">События</Link>
+            <Link href="/events">Календарь</Link>
             <Link href="/analytics">Аналитика</Link>
             <Link href="/teachers">Преподаватели</Link>
             <Link href="/students">Студенты</Link>
             <Link href="/parents">Родители</Link>
+            <Link href="/knowledge">База знаний</Link>
             <Link href="/logout">Выйти</Link>
             <ThemeToggle />
           </div>

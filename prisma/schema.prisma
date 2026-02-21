@@ -47,9 +47,15 @@ enum AttendanceStatus {
   LATE
 }
 
+enum TaskStatus {
+  PENDING
+  DONE
+  DISMISSED
+}
+
 model User {
   id          String      @id @default(cuid())
-  email       String      @unique
+  email       String?     @unique
   passwordHash String?
   fullName    String
   phone       String?
@@ -67,6 +73,7 @@ model User {
   eventParticipants EventParticipant[]
   createdEvents      Event[]            @relation("EventCreatedBy")
   sessions           UserSession[]
+  confirmationTasks  EventConfirmationTask[]
 }
 
 model TeacherProfile {
@@ -81,6 +88,8 @@ model TeacherProfile {
 
   user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   rates TeacherRate[]
+  studentLinks TeacherStudentLink[]
+  curatedStudents StudentProfile[] @relation("StudentCurator")
 }
 
 model StudentProfile {
@@ -90,12 +99,15 @@ model StudentProfile {
   diagnosticsSummary String?
   problemSubjects    String[]
   requestText        String?
+  curatorTeacherId   String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  curatorTeacher TeacherProfile? @relation("StudentCurator", fields: [curatorTeacherId], references: [id], onDelete: SetNull)
 
   parentLinks ParentStudentLink[]
+  teacherLinks TeacherStudentLink[]
 }
 
 model ParentProfile {
@@ -143,6 +155,7 @@ model Event {
   notes              String?
   cancelReasonId     String?
   cancelComment      String?
+  completionComment  String?
   createdByUserId    String
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
@@ -150,6 +163,7 @@ model Event {
   createdBy    User            @relation("EventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   cancelReason CancelReason?   @relation(fields: [cancelReasonId], references: [id], onDelete: SetNull)
   participants EventParticipant[]
+  confirmationTasks EventConfirmationTask[]
 
   @@index([plannedStartAt])
   @@index([status])
@@ -199,6 +213,20 @@ model TeacherRate {
   @@index([teacherProfileId, activityType, effectiveFrom])
 }
 
+model TeacherStudentLink {
+  id               String   @id @default(cuid())
+  teacherProfileId String
+  studentProfileId String
+  createdAt        DateTime @default(now())
+
+  teacher TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherProfileId, studentProfileId])
+  @@index([teacherProfileId])
+  @@index([studentProfileId])
+}
+
 model UserSession {
   id         String   @id @default(cuid())
   userId     String
@@ -210,4 +238,19 @@ model UserSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model EventConfirmationTask {
+  id            String     @id @default(cuid())
+  eventId        String
+  teacherUserId  String
+  status         TaskStatus @default(PENDING)
+  createdAt      DateTime   @default(now())
+  resolvedAt     DateTime?
+
+  event       Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teacherUser User  @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, teacherUserId])
+  @@index([teacherUserId, status])
 }

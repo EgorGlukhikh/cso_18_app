@@ -75,6 +75,7 @@ export const eventStatusSchema = z
     status: z.nativeEnum(EventStatus),
     cancelReasonId: z.string().min(1).optional(),
     cancelComment: z.string().trim().max(1000).optional(),
+    completionComment: z.string().trim().max(3000).optional(),
     factStartAt: isoDate.optional(),
     factEndAt: isoDate.optional()
   })
@@ -84,6 +85,13 @@ export const eventStatusSchema = z
         code: z.ZodIssueCode.custom,
         path: ["cancelReasonId"],
         message: "Cancel reason is required for canceled status"
+      });
+    }
+    if (value.status === EventStatus.COMPLETED && !value.completionComment?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["completionComment"],
+        message: "Completion comment is required for completed status"
       });
     }
   })
