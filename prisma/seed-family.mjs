@@ -25,6 +25,40 @@ const students = [
   { fullName: "Глухих Наталья Егоровна", grade: "11" }
 ];
 
+const teachers = [
+  {
+    fullName: "Дулесова Ксения Ивановна",
+    email: "dulesova.teacher@example.com",
+    subjects: ["Английский язык"],
+    canBeCurator: false
+  },
+  {
+    fullName: "Воронцова Эльвира Николаевна",
+    email: "vorontsova.teacher@example.com",
+    subjects: ["Русский язык"],
+    canBeCurator: true
+  },
+  {
+    fullName: "Глухих Нина Сергеевна",
+    email: "nina.glukhikh.teacher@example.com",
+    subjects: ["Клубная деятельность"],
+    canBeCurator: true
+  },
+  {
+    fullName: "Глухих Егор Александрович",
+    email: "egor.glukhikh.teacher@example.com",
+    subjects: ["Клубная деятельность"],
+    canBeCurator: true
+  }
+];
+
+const psychologists = [
+  {
+    fullName: "Бикузина Ольга Анатольевна",
+    email: "bikuzina.psychologist@example.com"
+  }
+];
+
 async function upsertParent(parent) {
   const user = await prisma.user.upsert({
     where: { email: parent.email },
@@ -100,6 +134,51 @@ async function upsertStudent(student, idx) {
   return prisma.studentProfile.findUniqueOrThrow({ where: { userId: user.id } });
 }
 
+async function upsertTeacher(teacher) {
+  const user = await prisma.user.upsert({
+    where: { email: teacher.email },
+    update: {
+      fullName: teacher.fullName,
+      role: UserRole.TEACHER
+    },
+    create: {
+      email: teacher.email,
+      fullName: teacher.fullName,
+      role: UserRole.TEACHER,
+      timezone: "Europe/Moscow"
+    }
+  });
+
+  await prisma.teacherProfile.upsert({
+    where: { userId: user.id },
+    update: {
+      subjects: teacher.subjects,
+      canBeCurator: teacher.canBeCurator
+    },
+    create: {
+      userId: user.id,
+      subjects: teacher.subjects,
+      canBeCurator: teacher.canBeCurator
+    }
+  });
+}
+
+async function upsertPsychologist(psychologist) {
+  await prisma.user.upsert({
+    where: { email: psychologist.email },
+    update: {
+      fullName: psychologist.fullName,
+      role: UserRole.PSYCHOLOGIST
+    },
+    create: {
+      email: psychologist.email,
+      fullName: psychologist.fullName,
+      role: UserRole.PSYCHOLOGIST,
+      timezone: "Europe/Moscow"
+    }
+  });
+}
+
 async function main() {
   const parentProfiles = [];
   for (const parent of parents) {
@@ -151,7 +230,15 @@ async function main() {
     });
   }
 
-  console.log("Family seed completed");
+  for (const teacher of teachers) {
+    await upsertTeacher(teacher);
+  }
+
+  for (const psychologist of psychologists) {
+    await upsertPsychologist(psychologist);
+  }
+
+  console.log("Family and staff seed completed");
 }
 
 main()
@@ -163,3 +250,4 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
