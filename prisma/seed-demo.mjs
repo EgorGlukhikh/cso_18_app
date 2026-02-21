@@ -11,6 +11,16 @@ const teacherSeed = [
   { fullName: "Бикузина Ольга Анатольевна", email: "bikuzina.psychologist@example.com", subjects: ["Психология"] }
 ];
 
+const subjectCatalog = [
+  "Английский язык",
+  "Русский язык",
+  "Математика",
+  "Клубная деятельность",
+  "Психология",
+  "История",
+  "Биология"
+];
+
 function toIsoDay(date) {
   return date.toLocaleDateString("sv-SE");
 }
@@ -203,7 +213,7 @@ async function ensureEvents(admin, teachers, students) {
 
     const event = await createEventIfMissing({
       title: `Административная встреча педагогов #${i + 1}`,
-      subject: "Планерка",
+      subject: "Клубная деятельность",
       activityType: ActivityType.TEACHERS_GENERAL_MEETING,
       status: EventStatus.PLANNED,
       plannedStartAt: start,
@@ -253,7 +263,7 @@ async function ensureEvents(admin, teachers, students) {
 
     const event = await createEventIfMissing({
       title: `${titles[created % titles.length]} #${created + 1}`,
-      subject: isGroup ? "Групповая работа" : "Индивидуальная работа",
+      subject: isGroup ? "Английский язык" : "Математика",
       activityType: isGroup ? ActivityType.GROUP_LESSON : ActivityType.INDIVIDUAL_LESSON,
       status: EventStatus.PLANNED,
       plannedStartAt: start,
@@ -307,6 +317,14 @@ async function ensureEvents(admin, teachers, students) {
 }
 
 async function main() {
+  for (let i = 0; i < subjectCatalog.length; i += 1) {
+    await prisma.subject.upsert({
+      where: { name: subjectCatalog[i] },
+      update: { isActive: true, sortOrder: i + 1 },
+      create: { name: subjectCatalog[i], isActive: true, sortOrder: i + 1 }
+    });
+  }
+
   const admin = await ensureAdmin();
   const teachers = await ensureTeachers();
   const parents = await ensureParents();

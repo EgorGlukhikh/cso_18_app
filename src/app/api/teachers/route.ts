@@ -36,6 +36,15 @@ export async function POST(request: NextRequest) {
 
     const payload = schema.parse(await request.json());
     const email = payload.email.trim().toLowerCase();
+    if (payload.subjects.length) {
+      const validSubjects = await db.subject.findMany({
+        where: { name: { in: payload.subjects }, isActive: true },
+        select: { name: true }
+      });
+      if (validSubjects.length !== payload.subjects.length) {
+        return badRequest("Один или несколько предметов отсутствуют в справочнике");
+      }
+    }
 
     const created = await db.user.create({
       data: {

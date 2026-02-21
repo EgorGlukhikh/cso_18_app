@@ -60,6 +60,16 @@ const psychologists = [
   }
 ];
 
+const subjectCatalog = [
+  "Английский язык",
+  "Русский язык",
+  "Математика",
+  "Клубная деятельность",
+  "Психология",
+  "История",
+  "Биология"
+];
+
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
@@ -187,6 +197,14 @@ async function upsertPsychologist(psychologist) {
 }
 
 async function main() {
+  for (let i = 0; i < subjectCatalog.length; i += 1) {
+    await prisma.subject.upsert({
+      where: { name: subjectCatalog[i] },
+      update: { isActive: true, sortOrder: i + 1 },
+      create: { name: subjectCatalog[i], isActive: true, sortOrder: i + 1 }
+    });
+  }
+
   await prisma.user.upsert({
     where: { email: "admin@admin.ru" },
     update: {

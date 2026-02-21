@@ -36,6 +36,15 @@ export async function PATCH(request: NextRequest, context: Params) {
 
     const { id } = await context.params;
     const payload = patchSchema.parse(await request.json());
+    if (payload.subjects?.length) {
+      const validSubjects = await db.subject.findMany({
+        where: { name: { in: payload.subjects }, isActive: true },
+        select: { name: true }
+      });
+      if (validSubjects.length !== payload.subjects.length) {
+        return badRequest("Один или несколько предметов отсутствуют в справочнике");
+      }
+    }
 
     const existing = await db.teacherProfile.findUnique({ where: { id } });
     if (!existing) return notFound("Преподаватель не найден");

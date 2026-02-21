@@ -69,6 +69,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const payload = eventCreateSchema.parse(body);
 
+    if (payload.subject) {
+      const subjectExists = await db.subject.findFirst({
+        where: { name: payload.subject, isActive: true },
+        select: { id: true }
+      });
+      if (!subjectExists) {
+        return badRequest("Выбранный предмет отсутствует в активном справочнике");
+      }
+    }
+
     if (
       isAdministrativeType(payload.activityType) &&
       payload.participants.some((item) => item.participantRole === "STUDENT")

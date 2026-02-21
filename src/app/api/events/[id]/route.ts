@@ -39,6 +39,16 @@ export async function PATCH(request: NextRequest, context: Params) {
     const body = await request.json();
     const payload = eventUpdateSchema.parse(body);
 
+    if (payload.subject) {
+      const subjectExists = await db.subject.findFirst({
+        where: { name: payload.subject, isActive: true },
+        select: { id: true }
+      });
+      if (!subjectExists) {
+        return badRequest("Выбранный предмет отсутствует в активном справочнике");
+      }
+    }
+
     const existing = await db.event.findUnique({ where: { id }, include: { participants: true } });
     if (!existing) return notFound("Event not found");
 

@@ -28,6 +28,7 @@ export default function RootLayout({
             <Link href="/">Главная</Link>
             <Link href="/events">Календарь</Link>
             <Link href="/analytics">Аналитика</Link>
+            <Link href="/subjects">Предметы</Link>
             <Link href="/teachers">Преподаватели</Link>
             <Link href="/students">Студенты</Link>
             <Link href="/parents">Родители</Link>

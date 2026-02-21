@@ -27,6 +27,7 @@ type StudentItem = {
 
 type ParentOption = { id: string; user: { fullName: string } };
 type TeacherOption = { id: string; user: { id: string; fullName: string } };
+type SubjectItem = { id: string; name: string; isActive: boolean };
 
 type ScheduleItem = {
   id: string;
@@ -74,6 +75,7 @@ export default function StudentsPage() {
   const [items, setItems] = useState<StudentItem[]>([]);
   const [parents, setParents] = useState<ParentOption[]>([]);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const [subjectsCatalog, setSubjectsCatalog] = useState<string[]>([]);
   const [createdByUserId, setCreatedByUserId] = useState("");
   const [error, setError] = useState("");
 
@@ -108,10 +110,11 @@ export default function StudentsPage() {
   const [iopData, setIopData] = useState<string | null>(null);
 
   async function load() {
-    const [studentsRes, parentsRes, teachersRes, meRes] = await Promise.all([
+    const [studentsRes, parentsRes, teachersRes, subjectsRes, meRes] = await Promise.all([
       fetch("/api/students"),
       fetch("/api/parents"),
       fetch("/api/teachers"),
+      fetch("/api/subjects"),
       fetch("/api/auth/me")
     ]);
 
@@ -131,6 +134,13 @@ export default function StudentsPage() {
       const teachersPayload = (await teachersRes.json()) as { items?: TeacherOption[] };
       setTeachers(teachersPayload.items ?? []);
       if (teachersPayload.items?.[0]) setEventTeacherId(teachersPayload.items[0].user.id);
+    }
+
+    if (subjectsRes.ok) {
+      const subjectsPayload = (await subjectsRes.json()) as { items?: SubjectItem[] };
+      const names = (subjectsPayload.items ?? []).filter((item) => item.isActive).map((item) => item.name);
+      setSubjectsCatalog(names);
+      if (names[0]) setEventSubject((current) => current || names[0]);
     }
 
     if (meRes.ok) {
@@ -435,7 +445,16 @@ export default function StudentsPage() {
             <h3 style={{ marginTop: 18 }}>Добавить занятие студенту</h3>
             <form className="grid cols-2" onSubmit={createEventForStudent}>
               <label>Название<input value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} required /></label>
-              <label>Предмет<input value={eventSubject} onChange={(e) => setEventSubject(e.target.value)} required /></label>
+              <label>
+                Предмет
+                <select value={eventSubject} onChange={(e) => setEventSubject(e.target.value)} required>
+                  {subjectsCatalog.length ? (
+                    subjectsCatalog.map((subject) => <option key={subject} value={subject}>{subject}</option>)
+                  ) : (
+                    <option value="">Нет предметов в справочнике</option>
+                  )}
+                </select>
+              </label>
               <label>
                 Тип
                 <select value={eventType} onChange={(e) => setEventType(e.target.value as typeof eventType)}>

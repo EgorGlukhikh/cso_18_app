@@ -34,6 +34,7 @@ type EventItem = {
 };
 
 type UserItem = { id: string; user: { id: string; fullName: string } };
+type SubjectItem = { id: string; name: string; isActive: boolean };
 
 type CalendarCard = {
   event: EventItem;
@@ -195,6 +196,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [teachers, setTeachers] = useState<UserItem[]>([]);
   const [students, setStudents] = useState<UserItem[]>([]);
+  const [subjectsCatalog, setSubjectsCatalog] = useState<string[]>([]);
   const [createdByUserId, setCreatedByUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -235,9 +237,10 @@ export default function EventsPage() {
   }, [dateFilter, dayFilterDate, customFrom, customTo]);
 
   async function loadUsers() {
-    const [teachersRes, studentsRes, meRes] = await Promise.all([
+    const [teachersRes, studentsRes, subjectsRes, meRes] = await Promise.all([
       fetch("/api/teachers"),
       fetch("/api/students"),
+      fetch("/api/subjects"),
       fetch("/api/auth/me")
     ]);
 
@@ -251,6 +254,16 @@ export default function EventsPage() {
       const payload = (await studentsRes.json()) as { items: UserItem[] };
       setStudents(payload.items ?? []);
       if (payload.items?.[0]) setStudentId(payload.items[0].user.id);
+    }
+
+    if (subjectsRes.ok) {
+      const payload = (await subjectsRes.json()) as { items: SubjectItem[] };
+      const names = (payload.items ?? []).filter((item) => item.isActive).map((item) => item.name);
+      setSubjectsCatalog(names);
+      if (names[0]) {
+        setSubject((current) => current || names[0]);
+        setEditSubject((current) => current || names[0]);
+      }
     }
 
     if (meRes.ok) {
@@ -681,7 +694,16 @@ export default function EventsPage() {
             <form className="grid cols-2" onSubmit={createEvent}>
               <label>Дата<input type="date" value={createDate} onChange={(e) => setCreateDate(e.target.value)} required /></label>
               <label>Название<input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
-              <label>Предмет<input value={subject} onChange={(e) => setSubject(e.target.value)} required /></label>
+              <label>
+                Предмет
+                <select value={subject} onChange={(e) => setSubject(e.target.value)} required>
+                  {subjectsCatalog.length ? (
+                    subjectsCatalog.map((item) => <option key={item} value={item}>{item}</option>)
+                  ) : (
+                    <option value="">Нет предметов в справочнике</option>
+                  )}
+                </select>
+              </label>
               <label>
                 Тип занятия
                 <select value={activityType} onChange={(e) => setActivityType(e.target.value as ActivityType)}>
@@ -736,7 +758,18 @@ export default function EventsPage() {
             {editMode ? (
               <div className="grid cols-2">
                 <label>Название<input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} /></label>
-                <label>Предмет<input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} /></label>
+                <label>
+                  Предмет
+                  <select value={editSubject} onChange={(e) => setEditSubject(e.target.value)}>
+                    {subjectsCatalog.length ? (
+                      [...new Set([editSubject, ...subjectsCatalog].filter(Boolean))].map((item) => (
+                        <option key={item} value={item}>{item}</option>
+                      ))
+                    ) : (
+                      <option value="">Нет предметов в справочнике</option>
+                    )}
+                  </select>
+                </label>
                 <label>Начало<input type="datetime-local" value={editStart} onChange={(e) => setEditStart(e.target.value)} /></label>
                 <label>Конец<input type="datetime-local" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} /></label>
                 <label>

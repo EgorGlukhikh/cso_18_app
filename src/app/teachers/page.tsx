@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type ScheduleItem = {
   id: string;
@@ -27,16 +28,7 @@ type TeacherItem = {
 type ViewMode = "calendar" | "list";
 
 type StudentOption = { id: string; user: { id: string; fullName: string } };
-
-const SUBJECTS = [
-  "Английский язык",
-  "Русский язык",
-  "Математика",
-  "Клубная деятельность",
-  "Психология",
-  "История",
-  "Биология"
-];
+type SubjectItem = { id: string; name: string; isActive: boolean };
 
 function colorByCategory(category: ScheduleItem["category"]) {
   if (category === "individual") return { bg: "#e9f2ff", border: "#2d7dff" };
@@ -65,6 +57,7 @@ function endOfMonth(base: Date) {
 export default function TeachersPage() {
   const [items, setItems] = useState<TeacherItem[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
+  const [subjectsCatalog, setSubjectsCatalog] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
@@ -95,9 +88,10 @@ export default function TeachersPage() {
   const [createdByUserId, setCreatedByUserId] = useState("");
 
   async function load() {
-    const [teachersRes, studentsRes, meRes] = await Promise.all([
+    const [teachersRes, studentsRes, subjectsRes, meRes] = await Promise.all([
       fetch("/api/teachers"),
       fetch("/api/students"),
+      fetch("/api/subjects"),
       fetch("/api/auth/me")
     ]);
 
@@ -111,6 +105,13 @@ export default function TeachersPage() {
     if (studentsRes.ok) {
       const studentsPayload = (await studentsRes.json()) as { items?: StudentOption[] };
       setStudents(studentsPayload.items ?? []);
+    }
+
+    if (subjectsRes.ok) {
+      const subjectsPayload = (await subjectsRes.json()) as { items?: SubjectItem[] };
+      const names = (subjectsPayload.items ?? []).filter((s) => s.isActive).map((s) => s.name);
+      setSubjectsCatalog(names);
+      if (!createSubject && names[0]) setCreateSubject(names[0]);
     }
 
     if (meRes.ok) {
@@ -131,6 +132,7 @@ export default function TeachersPage() {
 
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -139,6 +141,12 @@ export default function TeachersPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTeacher, from, to]);
+
+  useEffect(() => {
+    if (!createSubject && subjectsCatalog[0]) {
+      setCreateSubject(subjectsCatalog[0]);
+    }
+  }, [subjectsCatalog, createSubject]);
 
   function toggleSubject(list: string[], value: string, setter: (items: string[]) => void) {
     if (list.includes(value)) setter(list.filter((v) => v !== value));
@@ -149,6 +157,8 @@ export default function TeachersPage() {
     setActiveTeacher(teacher);
     setEditSubjects(teacher.subjects ?? []);
     setEditCurator(Boolean(teacher.canBeCurator));
+    const preferred = teacher.subjects.find((s) => subjectsCatalog.includes(s)) ?? subjectsCatalog[0] ?? "";
+    setCreateSubject(preferred);
   }
 
   async function saveTeacher() {
@@ -267,6 +277,9 @@ export default function TeachersPage() {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input style={{ maxWidth: 380 }} placeholder="Поиск по ФИО" value={search} onChange={(e) => setSearch(e.target.value)} />
           <button type="button" onClick={() => setAddOpen(true)}>Добавить</button>
+          <Link href="/subjects" className="secondary" style={{ display: "inline-flex", alignItems: "center", padding: "8px 12px", borderRadius: 10 }}>
+            Справочник предметов
+          </Link>
         </div>
         {error ? <p className="error">{error}</p> : null}
       </section>
@@ -303,7 +316,7 @@ export default function TeachersPage() {
               <div style={{ gridColumn: "1 / -1" }}>
                 <strong>Специализации</strong>
                 <div className="icon-switch" style={{ marginTop: 8 }}>
-                  {SUBJECTS.map((subject) => (
+                  {subjectsCatalog.map((subject) => (
                     <button key={subject} type="button" className={newSubjects.includes(subject) ? "" : "secondary"} onClick={() => toggleSubject(newSubjects, subject, setNewSubjects)}>
                       {subject}
                     </button>
@@ -336,7 +349,7 @@ export default function TeachersPage() {
               <div style={{ gridColumn: "1 / -1" }}>
                 <strong>Специализации</strong>
                 <div className="icon-switch" style={{ marginTop: 8 }}>
-                  {SUBJECTS.map((subject) => (
+                  {subjectsCatalog.map((subject) => (
                     <button key={subject} type="button" className={editSubjects.includes(subject) ? "" : "secondary"} onClick={() => toggleSubject(editSubjects, subject, setEditSubjects)}>
                       {subject}
                     </button>
@@ -388,7 +401,18 @@ export default function TeachersPage() {
             <h3 style={{ marginTop: 18 }}>Быстро добавить занятие этому преподавателю</h3>
             <form className="grid cols-2" onSubmit={createEventForTeacher}>
               <label>Название<input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} required /></label>
-              <label>Предмет<input value={createSubject} onChange={(e) => setCreateSubject(e.target.value)} required /></label>
+              <label>
+                Предмет
+                <select value={createSubject} onChange={(e) => setCreateSubject(e.target.value)} required>
+                  {(activeTeacher?.subjects?.length ? activeTeacher.subjects : subjectsCatalog).length ? (
+                    (activeTeacher?.subjects?.length ? activeTeacher.subjects : subjectsCatalog).map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))
+                  ) : (
+                    <option value="">Нет предметов в справочнике</option>
+                  )}
+                </select>
+              </label>
               <label>
                 Тип
                 <select value={createType} onChange={(e) => setCreateType(e.target.value as typeof createType)}>
