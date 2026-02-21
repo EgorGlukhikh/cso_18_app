@@ -75,8 +75,8 @@ function isoDate(date) {
   return date.toISOString().slice(0, 10);
 }
 
-function utcDateTime(day, hours, minutes) {
-  return new Date(`${day}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00.000Z`);
+function moscowDateTime(day, hours, minutes) {
+  return new Date(`${day}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+03:00`);
 }
 
 function distributeIndividualLessons(total) {
@@ -287,8 +287,8 @@ async function seedEvents(admin, pedagogues, students) {
 
   for (const monday of mondays) {
     const day = isoDate(monday);
-    const start = utcDateTime(day, 10, 0);
-    const end = utcDateTime(day, 12, 0);
+    const start = moscowDateTime(day, 10, 0);
+    const end = moscowDateTime(day, 12, 0);
     await createEventWithParticipants(
       {
         title: `LOADPACK Административная встреча ${day}`,
@@ -337,8 +337,8 @@ async function seedEvents(admin, pedagogues, students) {
 
     for (let lessonIdx = 0; lessonIdx < lessonCount; lessonIdx += 1) {
       const [hour, minute] = timeSlots[lessonIdx];
-      const start = utcDateTime(day, hour, minute);
-      const end = utcDateTime(day, hour + 1, minute);
+      const start = moscowDateTime(day, hour, minute);
+      const end = moscowDateTime(day, hour + 1, minute);
       const teacher = teacherPool[eventIndex % teacherPool.length];
       const student = students[eventIndex % students.length];
       const subject = teacher.teacherProfile?.subjects?.[0] ?? "Клубная деятельность";
@@ -379,8 +379,8 @@ async function seedEvents(admin, pedagogues, students) {
 
   for (let i = 0; i < groupPlan.length; i += 1) {
     const plan = groupPlan[i];
-    const start = utcDateTime(plan.day, plan.hour, 0);
-    const end = utcDateTime(plan.day, plan.hour + 1, 0);
+    const start = moscowDateTime(plan.day, plan.hour, 0);
+    const end = moscowDateTime(plan.day, plan.hour + 1, 0);
     const groupStudents = [
       students[plan.studentStart % students.length],
       students[(plan.studentStart + 1) % students.length],
