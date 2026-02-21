@@ -3,8 +3,8 @@
 
   --bg: #f3f6fb;
   --surface: #ffffff;
-  --surface-2: #f6f9ff;
-  --border: #bfcde0;
+  --surface-2: #eef4ff;
+  --border: #9fb8d8;
   --text: #162334;
   --muted: #5f7084;
   --accent: #1b6bd9;
@@ -132,12 +132,12 @@ code {
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, #dbe8ff 4%), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 90%, #d2e3fa);
   border-radius: 14px;
   padding: 16px;
   box-shadow: var(--shadow);
-  outline: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
   outline-offset: -1px;
 }
 
@@ -207,6 +207,37 @@ button.secondary {
 .error {
   color: var(--danger);
   margin: 0;
+}
+
+.calendar-month-cell {
+  border-color: color-mix(in srgb, var(--border) 88%, #bdd5f3);
+}
+
+.event-chip {
+  border: 1px solid transparent;
+  color: #fff !important;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.event-chip--individual {
+  background: #2d7dff !important;
+  border-color: #2d7dff !important;
+}
+
+.event-chip--group {
+  background: #1f9d54 !important;
+  border-color: #1f9d54 !important;
+}
+
+.event-chip--administrative {
+  background: #df8a27 !important;
+  border-color: #df8a27 !important;
+}
+
+html[data-theme="dark"] .event-chip {
+  color: #fff !important;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
 }
 
 @media (max-width: 900px) {

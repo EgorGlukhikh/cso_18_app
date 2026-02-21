@@ -112,9 +112,20 @@ function typeLabel(type: ActivityType) {
 
 function colorForType(type: ActivityType) {
   const category = getCategory(type);
-  if (category === "individual") return { border: "#2d7dff", bg: "#e9f2ff" };
-  if (category === "group") return { border: "#20a35a", bg: "#eaf9f0" };
-  return { border: "#f29f3f", bg: "#fff4e6" };
+  if (category === "individual") return { className: "event-chip event-chip--individual" };
+  if (category === "group") return { className: "event-chip event-chip--group" };
+  return { className: "event-chip event-chip--administrative" };
+}
+
+function studentSurname(event: EventItem) {
+  const student = event.participants.find((p) => p.participantRole === "STUDENT")?.user.fullName?.trim();
+  if (!student) return "Без ученика";
+  return student.split(/\s+/)[0] || "Без ученика";
+}
+
+function eventShortLabel(event: EventItem) {
+  const subject = (event.subject ?? "").trim() || typeLabel(event.activityType);
+  return `${studentSurname(event)} / ${subject}`;
 }
 
 function toDateTimeLocalString(value: Date) {
@@ -541,6 +552,7 @@ export default function EventsPage() {
                 return (
                   <article
                     key={card.event.id}
+                    className={c.className}
                     onClick={(e) => {
                       e.stopPropagation();
                       openEvent(card.event);
@@ -552,15 +564,15 @@ export default function EventsPage() {
                       width: `calc(${card.width}% - 8px)`,
                       height: card.height,
                       borderRadius: 10,
-                      border: `1px solid ${c.border}`,
-                      background: c.bg,
                       padding: "6px 8px",
                       overflow: "hidden",
                       cursor: "pointer"
                     }}
                   >
-                    <strong style={{ display: "block", fontSize: 13 }}>{card.event.title}</strong>
-                    <span style={{ fontSize: 12, display: "block" }}>{card.event.subject || "Без предмета"}</span>
+                    <strong style={{ display: "block", fontSize: 12 }}>{eventShortLabel(card.event)}</strong>
+                    <span style={{ fontSize: 11, display: "block", opacity: 0.9 }}>
+                      {new Date(card.event.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
                   </article>
                 );
               })}
@@ -584,8 +596,8 @@ export default function EventsPage() {
                   {items.length ? items.map((item) => {
                     const c = colorForType(item.activityType);
                     return (
-                      <button key={item.id} className="secondary" onClick={() => openEvent(item)} style={{ width: "100%", borderColor: c.border, background: c.bg, marginBottom: 6, textAlign: "left" }}>
-                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                      <button key={item.id} className={c.className} onClick={() => openEvent(item)} style={{ width: "100%", marginBottom: 6, textAlign: "left" }}>
+                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {eventShortLabel(item)}
                       </button>
                     );
                   }) : <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет событий</div>}
@@ -605,15 +617,15 @@ export default function EventsPage() {
               const key = toDayString(day);
               const items = eventsByDay.get(key) ?? [];
               return (
-                <div key={key} className="card" style={{ margin: 0, padding: 8, minHeight: 140 }}>
+                <div key={key} className="card calendar-month-cell" style={{ margin: 0, padding: 8, minHeight: 140 }}>
                   <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
                     {day.getDate()}
                   </button>
                   {items.slice(0, 3).map((item) => {
                     const c = colorForType(item.activityType);
                     return (
-                      <button key={item.id} className="secondary" onClick={() => openEvent(item)} style={{ width: "100%", borderColor: c.border, background: c.bg, marginBottom: 4, textAlign: "left", fontSize: 11 }}>
-                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {item.title}
+                      <button key={item.id} className={c.className} onClick={() => openEvent(item)} style={{ width: "100%", marginBottom: 4, textAlign: "left", fontSize: 11 }}>
+                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {eventShortLabel(item)}
                       </button>
                     );
                   })}
