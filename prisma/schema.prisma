@@ -99,6 +99,9 @@ model StudentProfile {
   diagnosticsSummary String?
   problemSubjects    String[]
   requestText        String?
+  comment            String?
+  iopDocxFileName    String?
+  iopDocxBase64      String?
   curatorTeacherId   String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -116,6 +119,7 @@ model ParentProfile {
   telegramChatId       String?  @unique
   telegramEnabled      Boolean  @default(false)
   morningReminderHour  Int      @default(8)
+  comment              String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed-reasons": "node prisma/seed-cancel-reasons.mjs",
-    "prisma:seed-family": "node prisma/seed-family.mjs"
+    "prisma:seed-family": "node prisma/seed-family.mjs",
+    "prisma:seed-demo": "node prisma/seed-demo.mjs"
   },
   "keywords": [
     "nextjs",

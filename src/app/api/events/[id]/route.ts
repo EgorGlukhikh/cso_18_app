@@ -1,4 +1,4 @@
-import { ParticipantRole } from "@prisma/client";
+import { ActivityType, ParticipantRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
@@ -6,6 +6,15 @@ import { badRequest, notFound, serverError } from "@/lib/http";
 import { eventUpdateSchema } from "@/lib/validation";
 
 type Params = { params: Promise<{ id: string }> };
+
+function isAdministrativeType(type: ActivityType) {
+  return (
+    type === ActivityType.OFFSITE_EVENT ||
+    type === ActivityType.PEDAGOGICAL_CONSILIUM ||
+    type === ActivityType.TEACHERS_GENERAL_MEETING ||
+    type === ActivityType.PSYCHOLOGIST_SESSION
+  );
+}
 
 export async function GET(_: NextRequest, context: Params) {
   try {
@@ -30,8 +39,21 @@ export async function PATCH(request: NextRequest, context: Params) {
     const body = await request.json();
     const payload = eventUpdateSchema.parse(body);
 
-    const existing = await db.event.findUnique({ where: { id } });
+    const existing = await db.event.findUnique({ where: { id }, include: { participants: true } });
     if (!existing) return notFound("Event not found");
+
+    const targetActivityType = payload.activityType ?? existing.activityType;
+    const targetParticipants = (payload.participants as Array<{
+      userId: string;
+      participantRole: ParticipantRole;
+    }> | undefined) ?? existing.participants;
+
+    if (
+      isAdministrativeType(targetActivityType) &&
+      targetParticipants.some((item) => item.participantRole === "STUDENT")
+    ) {
+      return badRequest("Для студентов нельзя создавать административные занятия");
+    }
 
     const event = await db.event.update({
       where: { id },

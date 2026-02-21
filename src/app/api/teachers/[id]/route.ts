@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { badRequest, notFound, serverError } from "@/lib/http";
@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest, context: Params) {
         ...(payload.canBeCurator !== undefined ? { canBeCurator: payload.canBeCurator } : {}),
         ...(payload.hourlyRateCents !== undefined ? { hourlyRateCents: payload.hourlyRateCents } : {})
       },
-      include: { user: true }
+      include: { user: true, studentLinks: { include: { student: { include: { user: true } } } } }
     });
     return NextResponse.json(updated);
   } catch (error) {
@@ -55,4 +55,3 @@ export async function PATCH(request: NextRequest, context: Params) {
     return serverError(error);
   }
 }
-

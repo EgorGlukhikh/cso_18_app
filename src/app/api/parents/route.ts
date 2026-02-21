@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -10,7 +10,8 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   telegramEnabled: z.boolean().default(false),
-  morningReminderHour: z.number().int().min(0).max(23).default(8)
+  morningReminderHour: z.number().int().min(0).max(23).default(8),
+  comment: z.string().max(5000).optional()
 });
 
 export async function GET() {
@@ -51,7 +52,8 @@ export async function POST(request: NextRequest) {
         parentProfile: {
           create: {
             telegramEnabled: payload.telegramEnabled,
-            morningReminderHour: payload.morningReminderHour
+            morningReminderHour: payload.morningReminderHour,
+            comment: payload.comment
           }
         }
       },
@@ -66,4 +68,3 @@ export async function POST(request: NextRequest) {
     return serverError(error);
   }
 }
-

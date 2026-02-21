@@ -12,7 +12,10 @@ const schema = z.object({
   grade: z.string().optional(),
   diagnosticsSummary: z.string().optional(),
   problemSubjects: z.array(z.string()).default([]),
-  requestText: z.string().optional()
+  requestText: z.string().optional(),
+  comment: z.string().max(5000).optional(),
+  iopDocxFileName: z.string().max(255).optional(),
+  iopDocxBase64: z.string().max(2_000_000).optional()
 });
 
 export async function GET() {
@@ -54,7 +57,10 @@ export async function POST(request: NextRequest) {
             grade: payload.grade,
             diagnosticsSummary: payload.diagnosticsSummary,
             problemSubjects: payload.problemSubjects,
-            requestText: payload.requestText
+            requestText: payload.requestText,
+            comment: payload.comment,
+            iopDocxFileName: payload.iopDocxFileName,
+            iopDocxBase64: payload.iopDocxBase64
           }
         }
       },

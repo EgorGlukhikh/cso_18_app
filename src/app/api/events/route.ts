@@ -55,10 +55,26 @@ function isLessonType(type: ActivityType) {
   return type === ActivityType.INDIVIDUAL_LESSON || type === ActivityType.GROUP_LESSON;
 }
 
+function isAdministrativeType(type: ActivityType) {
+  return (
+    type === ActivityType.OFFSITE_EVENT ||
+    type === ActivityType.PEDAGOGICAL_CONSILIUM ||
+    type === ActivityType.TEACHERS_GENERAL_MEETING ||
+    type === ActivityType.PSYCHOLOGIST_SESSION
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const payload = eventCreateSchema.parse(body);
+
+    if (
+      isAdministrativeType(payload.activityType) &&
+      payload.participants.some((item) => item.participantRole === "STUDENT")
+    ) {
+      return badRequest("Для студентов нельзя создавать административные занятия");
+    }
 
     if (isLessonType(payload.activityType)) {
       const overlapping = await db.event.findMany({

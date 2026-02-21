@@ -37,8 +37,6 @@ type UserItem = { id: string; user: { id: string; fullName: string } };
 
 type CalendarCard = {
   event: EventItem;
-  start: Date;
-  end: Date;
   column: 0 | 1;
   width: number;
   top: number;
@@ -114,13 +112,18 @@ function typeLabel(type: ActivityType) {
 
 function colorForType(type: ActivityType) {
   const category = getCategory(type);
-  if (category === "individual") {
-    return { border: "#2d7dff", bg: "#e9f2ff" };
-  }
-  if (category === "group") {
-    return { border: "#20a35a", bg: "#eaf9f0" };
-  }
+  if (category === "individual") return { border: "#2d7dff", bg: "#e9f2ff" };
+  if (category === "group") return { border: "#20a35a", bg: "#eaf9f0" };
   return { border: "#f29f3f", bg: "#fff4e6" };
+}
+
+function toDateTimeLocalString(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function buildDayLayout(events: EventItem[]) {
@@ -155,8 +158,6 @@ function buildDayLayout(events: EventItem[]) {
 
     cards.push({
       event: item.event,
-      start: item.start,
-      end: item.end,
       column,
       width,
       top: topMinutes * PIXELS_PER_MINUTE,
@@ -165,15 +166,6 @@ function buildDayLayout(events: EventItem[]) {
   }
 
   return cards;
-}
-
-function toDateTimeLocalString(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  const hours = String(value.getHours()).padStart(2, "0");
-  const minutes = String(value.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function EventsPage() {
@@ -196,6 +188,8 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDate, setCreateDate] = useState(toDayString(today));
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [activityType, setActivityType] = useState<ActivityType>("INDIVIDUAL_LESSON");
@@ -291,6 +285,20 @@ export default function EventsPage() {
     });
   }
 
+  function openCreateModal(day: string, time = "10:00") {
+    setCreateDate(day);
+    setStartTime(time);
+    setCreateOpen(true);
+  }
+
+  function resetCreateForm() {
+    setTitle("");
+    setSubject("");
+    setActivityType("INDIVIDUAL_LESSON");
+    setDurationMinutes("45");
+    setCreateOpen(false);
+  }
+
   async function createEvent(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -300,9 +308,8 @@ export default function EventsPage() {
       return;
     }
 
-    const baseDate = dateFilter === "day" ? dayFilterDate : toDayString(new Date());
     const [h, m] = startTime.split(":").map(Number);
-    const start = new Date(`${baseDate}T00:00:00`);
+    const start = new Date(`${createDate}T00:00:00`);
     start.setHours(h || 0, m || 0, 0, 0);
     const end = new Date(start.getTime() + Number(durationMinutes || "45") * 60000);
 
@@ -331,8 +338,7 @@ export default function EventsPage() {
       return;
     }
 
-    setTitle("");
-    setSubject("");
+    resetCreateForm();
     await loadEvents();
   }
 
@@ -428,34 +434,19 @@ export default function EventsPage() {
       return;
     }
 
-    if (editStatus !== activeEvent.status) {
-      const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: editStatus,
-          completionComment: editStatus === "COMPLETED" ? editCompletionComment.trim() : undefined
-        })
-      });
-      if (!statusRes.ok) {
-        const payload = (await statusRes.json()) as { error?: string };
-        setError(payload.error ?? "Статус не обновлен");
-        return;
-      }
-    } else if (editStatus === "COMPLETED") {
-      const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "COMPLETED",
-          completionComment: editCompletionComment.trim()
-        })
-      });
-      if (!statusRes.ok) {
-        const payload = (await statusRes.json()) as { error?: string };
-        setError(payload.error ?? "Не удалось сохранить мини-отчет");
-        return;
-      }
+    const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: editStatus,
+        completionComment: editStatus === "COMPLETED" ? editCompletionComment.trim() : undefined
+      })
+    });
+
+    if (!statusRes.ok) {
+      const payload = (await statusRes.json()) as { error?: string };
+      setError(payload.error ?? "Статус не обновлен");
+      return;
     }
 
     await loadEvents();
@@ -468,111 +459,73 @@ export default function EventsPage() {
     await navigator.clipboard.writeText(url);
   }
 
+  function onDayCalendarClick(e: React.MouseEvent<HTMLDivElement>) {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - bounds.top;
+    const minutesFromStart = Math.max(0, Math.floor(y / PIXELS_PER_MINUTE));
+    const hour = Math.min(SLOT_END_HOUR - 1, SLOT_START_HOUR + Math.floor(minutesFromStart / 60));
+    const minute = Math.floor((minutesFromStart % 60) / 15) * 15;
+    const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    openCreateModal(dayKey, time);
+  }
+
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
 
   return (
     <div className="grid">
       <section className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <h1 style={{ marginTop: 0, marginBottom: 8 }}>Расписание</h1>
-            <div className="icon-switch">
-              <button type="button" className={categoryFilters.has("individual") ? "" : "secondary"} onClick={() => toggleCategory("individual")}>
-                <span>🔵</span> Индивидуальные
-              </button>
-              <button type="button" className={categoryFilters.has("group") ? "" : "secondary"} onClick={() => toggleCategory("group")}>
-                <span>🟢</span> Групповые
-              </button>
-              <button type="button" className={categoryFilters.has("administrative") ? "" : "secondary"} onClick={() => toggleCategory("administrative")}>
-                <span>🟠</span> Административные
-              </button>
-            </div>
+        <h1 style={{ marginTop: 0, marginBottom: 10 }}>Расписание</h1>
+
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <div className="icon-switch">
+            <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>День</button>
+            <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>Неделя</button>
+            <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>Месяц</button>
           </div>
 
-          <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
-            <div className="icon-switch">
-              <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>
-                <span>🗓️</span>
-              </button>
-              <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")}>
-                <span>📋</span>
-              </button>
-              <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>
-                День
-              </button>
-              <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>
-                Неделя
-              </button>
-              <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>
-                Месяц
-              </button>
-            </div>
-
-            <div className="icon-switch">
-              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} style={{ maxWidth: 220 }}>
-                <option value="current_month">Текущий месяц</option>
-                <option value="current_week">Текущая неделя</option>
-                <option value="day">День</option>
-                <option value="custom">Свой период</option>
-              </select>
-              {dateFilter === "day" ? (
-                <input type="date" value={dayFilterDate} onChange={(e) => setDayFilterDate(e.target.value)} style={{ maxWidth: 180 }} />
-              ) : null}
-              {dateFilter === "custom" ? (
-                <>
-                  <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ maxWidth: 180 }} />
-                  <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ maxWidth: 180 }} />
-                </>
-              ) : null}
-              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
-                <option value="">Все статусы</option>
-                <option value="PLANNED">Запланировано</option>
-                <option value="COMPLETED">Состоялось</option>
-                <option value="CANCELED">Не состоялось</option>
-              </select>
-            </div>
+          <div className="icon-switch">
+            <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")} title="Календарь">🗓️</button>
+            <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")} title="Список">📋</button>
           </div>
         </div>
+
+        <div className="icon-switch" style={{ marginBottom: 10 }}>
+          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} style={{ maxWidth: 220 }}>
+            <option value="current_month">Текущий месяц</option>
+            <option value="current_week">Текущая неделя</option>
+            <option value="day">День</option>
+            <option value="custom">Свой период</option>
+          </select>
+          {dateFilter === "day" ? <input type="date" value={dayFilterDate} onChange={(e) => setDayFilterDate(e.target.value)} style={{ maxWidth: 180 }} /> : null}
+          {dateFilter === "custom" ? (
+            <>
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ maxWidth: 180 }} />
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ maxWidth: 180 }} />
+            </>
+          ) : null}
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
+            <option value="">Все статусы</option>
+            <option value="PLANNED">Запланировано</option>
+            <option value="COMPLETED">Состоялось</option>
+            <option value="CANCELED">Не состоялось</option>
+          </select>
+          <button type="button" onClick={() => openCreateModal(dayKey)}>Создать занятие</button>
+        </div>
+
+        <div className="icon-switch">
+          <button type="button" className={categoryFilters.has("individual") ? "" : "secondary"} onClick={() => toggleCategory("individual")}>🔵 Индивидуальные</button>
+          <button type="button" className={categoryFilters.has("group") ? "" : "secondary"} onClick={() => toggleCategory("group")}>🟢 Групповые</button>
+          <button type="button" className={categoryFilters.has("administrative") ? "" : "secondary"} onClick={() => toggleCategory("administrative")}>🟠 Административные</button>
+        </div>
+
         {loading ? <p>Загрузка...</p> : null}
         {error ? <p className="error">{error}</p> : null}
-      </section>
-
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Создать занятие</h2>
-        <form className="grid cols-2" onSubmit={createEvent}>
-          <label>Название<input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
-          <label>Предмет<input value={subject} onChange={(e) => setSubject(e.target.value)} required /></label>
-          <label>
-            Тип занятия
-            <select value={activityType} onChange={(e) => setActivityType(e.target.value as ActivityType)}>
-              <option value="INDIVIDUAL_LESSON">Индивидуальное</option>
-              <option value="GROUP_LESSON">Групповое</option>
-            </select>
-          </label>
-          <label>Время начала<input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></label>
-          <label>Длительность (мин)<input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} /></label>
-          <label>
-            Преподаватель
-            <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
-              <option value="">Не выбран</option>
-              {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-            </select>
-          </label>
-          <label>
-            Ученик
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-              <option value="">Не выбран</option>
-              {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-            </select>
-          </label>
-          <div style={{ display: "flex", alignItems: "end" }}><button type="submit">Создать</button></div>
-        </form>
       </section>
 
       {viewMode === "calendar" && scope === "day" ? (
         <section className="card">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
-          <div style={{ position: "relative", height: calendarHeight, border: "1px solid var(--border)", borderRadius: 12 }}>
+          <div style={{ position: "relative", height: calendarHeight, border: "1px solid var(--border)", borderRadius: 12 }} onClick={onDayCalendarClick}>
             {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
               const hour = SLOT_START_HOUR + idx;
               const top = idx * 60 * PIXELS_PER_MINUTE;
@@ -588,7 +541,10 @@ export default function EventsPage() {
                 return (
                   <article
                     key={card.event.id}
-                    onClick={() => openEvent(card.event)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEvent(card.event);
+                    }}
                     style={{
                       position: "absolute",
                       top: card.top,
@@ -622,7 +578,9 @@ export default function EventsPage() {
               const items = eventsByDay.get(key) ?? [];
               return (
                 <article key={key} className="card" style={{ margin: 0, padding: 10 }}>
-                  <h3 style={{ marginTop: 0, fontSize: 14 }}>{day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}</h3>
+                  <button type="button" className="secondary" style={{ width: "100%", marginBottom: 8 }} onClick={() => openCreateModal(key)}>
+                    {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
+                  </button>
                   {items.length ? items.map((item) => {
                     const c = colorForType(item.activityType);
                     return (
@@ -647,8 +605,10 @@ export default function EventsPage() {
               const key = toDayString(day);
               const items = eventsByDay.get(key) ?? [];
               return (
-                <div key={key} className="card" style={{ margin: 0, padding: 8, minHeight: 120 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
+                <div key={key} className="card" style={{ margin: 0, padding: 8, minHeight: 140 }}>
+                  <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
+                    {day.getDate()}
+                  </button>
                   {items.slice(0, 3).map((item) => {
                     const c = colorForType(item.activityType);
                     return (
@@ -673,7 +633,10 @@ export default function EventsPage() {
               const items = eventsByDay.get(day) ?? [];
               return (
                 <article key={day} className="card" style={{ margin: 0 }}>
-                  <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+                    <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
+                    <button type="button" className="secondary" onClick={() => openCreateModal(day)}>Добавить</button>
+                  </div>
                   {items.length ? (
                     <table>
                       <thead><tr><th>Время</th><th>Событие</th><th>Тип</th><th>Статус</th></tr></thead>
@@ -694,6 +657,47 @@ export default function EventsPage() {
             })}
           </div>
         </section>
+      ) : null}
+
+      {createOpen ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "grid", placeItems: "center", zIndex: 60 }}>
+          <div className="card" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ marginTop: 0 }}>Создать занятие</h2>
+              <button className="secondary" onClick={() => setCreateOpen(false)}>Закрыть</button>
+            </div>
+            <form className="grid cols-2" onSubmit={createEvent}>
+              <label>Дата<input type="date" value={createDate} onChange={(e) => setCreateDate(e.target.value)} required /></label>
+              <label>Название<input value={title} onChange={(e) => setTitle(e.target.value)} required /></label>
+              <label>Предмет<input value={subject} onChange={(e) => setSubject(e.target.value)} required /></label>
+              <label>
+                Тип занятия
+                <select value={activityType} onChange={(e) => setActivityType(e.target.value as ActivityType)}>
+                  <option value="INDIVIDUAL_LESSON">Индивидуальное</option>
+                  <option value="GROUP_LESSON">Групповое</option>
+                  <option value="TEACHERS_GENERAL_MEETING">Административное</option>
+                </select>
+              </label>
+              <label>Время начала<input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></label>
+              <label>Длительность (мин)<input type="number" min={30} max={180} step={15} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} /></label>
+              <label>
+                Преподаватель
+                <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+                  <option value="">Не выбран</option>
+                  {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                </select>
+              </label>
+              <label>
+                Ученик
+                <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+                  <option value="">Не выбран</option>
+                  {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                </select>
+              </label>
+              <div style={{ display: "flex", alignItems: "end" }}><button type="submit">Создать</button></div>
+            </form>
+          </div>
+        </div>
       ) : null}
 
       {activeEvent ? (
@@ -734,12 +738,7 @@ export default function EventsPage() {
                 {editStatus === "COMPLETED" ? (
                   <label style={{ gridColumn: "1 / -1" }}>
                     Мини-отчет преподавателя (что проходили)
-                    <textarea
-                      value={editCompletionComment}
-                      onChange={(e) => setEditCompletionComment(e.target.value)}
-                      rows={4}
-                      required
-                    />
+                    <textarea value={editCompletionComment} onChange={(e) => setEditCompletionComment(e.target.value)} rows={4} required />
                   </label>
                 ) : null}
                 <div style={{ display: "flex", alignItems: "end" }}><button onClick={saveEventChanges}>Сохранить</button></div>

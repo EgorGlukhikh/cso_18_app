@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+﻿import { UserRole } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "node:crypto";
 
@@ -222,13 +222,13 @@ async function main() {
         }
       },
       update: {
-        relationship: "mother",
+        relationship: "Мама",
         receivesMorningReminder: true
       },
       create: {
         parentId: parentProfiles[0].id,
         studentId: student.id,
-        relationship: "mother",
+        relationship: "Мама",
         receivesMorningReminder: true
       }
     });
@@ -241,13 +241,13 @@ async function main() {
         }
       },
       update: {
-        relationship: "father",
+        relationship: "Папа",
         receivesMorningReminder: false
       },
       create: {
         parentId: parentProfiles[1].id,
         studentId: student.id,
-        relationship: "father",
+        relationship: "Папа",
         receivesMorningReminder: false
       }
     });
