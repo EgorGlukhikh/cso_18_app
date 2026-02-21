@@ -449,15 +449,30 @@ export default function EventsPage() {
 
   async function saveEventChanges() {
     if (!activeEvent) return;
-    if (editStatus === "COMPLETED" && !editCompletionComment.trim()) {
+    const normalizedCurrentComment = (activeEvent.completionComment ?? "").trim();
+    const normalizedNextComment = editCompletionComment.trim();
+    const statusChanged = editStatus !== activeEvent.status;
+    const completionCommentChanged =
+      editStatus === "COMPLETED" && normalizedNextComment !== normalizedCurrentComment;
+    const shouldSendStatus = statusChanged || completionCommentChanged;
+
+    if (shouldSendStatus && editStatus === "COMPLETED" && !normalizedNextComment) {
       setError("Для статуса 'Состоялось' заполните мини-отчет преподавателя");
       return;
     }
 
-    const patchBody: Record<string, string> = {
-      title: editTitle,
-      subject: editSubject
-    };
+    if (shouldSendStatus && editStatus === "CANCELED" && activeEvent.status !== "CANCELED") {
+      setError("Для статуса 'Не состоялось' требуется причина отмены");
+      return;
+    }
+
+    const patchBody: Record<string, string> = {};
+    if (editTitle !== activeEvent.title) {
+      patchBody.title = editTitle;
+    }
+    if (editSubject !== (activeEvent.subject ?? "")) {
+      patchBody.subject = editSubject;
+    }
     const currentStartIso = new Date(activeEvent.plannedStartAt).toISOString();
     const currentEndIso = new Date(activeEvent.plannedEndAt).toISOString();
     const nextStartIso = new Date(editStart).toISOString();
@@ -467,30 +482,36 @@ export default function EventsPage() {
       patchBody.plannedEndAt = nextEndIso;
     }
 
-    const patchRes = await fetch(`/api/events/${activeEvent.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patchBody)
-    });
+    const shouldSendPatch = Object.keys(patchBody).length > 0;
+    if (shouldSendPatch) {
+      const patchRes = await fetch(`/api/events/${activeEvent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patchBody)
+      });
 
-    if (!patchRes.ok) {
-      setError("Не удалось сохранить изменения события");
-      return;
+      if (!patchRes.ok) {
+        const payload = (await patchRes.json().catch(() => ({}))) as { error?: string };
+        setError(payload.error ?? "Не удалось сохранить изменения события");
+        return;
+      }
     }
 
-    const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: editStatus,
-        completionComment: editStatus === "COMPLETED" ? editCompletionComment.trim() : undefined
-      })
-    });
+    if (shouldSendStatus) {
+      const statusRes = await fetch(`/api/events/${activeEvent.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: editStatus,
+          completionComment: editStatus === "COMPLETED" ? normalizedNextComment : undefined
+        })
+      });
 
-    if (!statusRes.ok) {
-      const payload = (await statusRes.json()) as { error?: string };
-      setError(payload.error ?? "Статус не обновлен");
-      return;
+      if (!statusRes.ok) {
+        const payload = (await statusRes.json().catch(() => ({}))) as { error?: string };
+        setError(payload.error ?? "Статус не обновлен");
+        return;
+      }
     }
 
     await loadEvents();

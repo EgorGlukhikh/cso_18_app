@@ -1,4 +1,4 @@
-import { ActivityType, ParticipantRole } from "@prisma/client";
+﻿import { ActivityType, ParticipantRole } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
@@ -53,10 +53,11 @@ export async function PATCH(request: NextRequest, context: Params) {
     if (!existing) return notFound("Event not found");
 
     const targetActivityType = payload.activityType ?? existing.activityType;
-    const targetParticipants = (payload.participants as Array<{
-      userId: string;
-      participantRole: ParticipantRole;
-    }> | undefined) ?? existing.participants;
+    const targetParticipants =
+      (payload.participants as Array<{
+        userId: string;
+        participantRole: ParticipantRole;
+      }> | undefined) ?? existing.participants;
 
     if (
       isAdministrativeType(targetActivityType) &&

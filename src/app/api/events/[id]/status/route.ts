@@ -1,4 +1,4 @@
-import { EventStatus } from "@prisma/client";
+﻿import { EventStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
@@ -50,4 +50,3 @@ export async function POST(request: NextRequest, context: Params) {
     return serverError(error);
   }
 }
-
