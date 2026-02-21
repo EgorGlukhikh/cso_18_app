@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  CURATOR
+  PSYCHOLOGIST
+  PARENT
+  STUDENT
+}
+
+enum ActivityType {
+  LEISURE_GROUP
+  INDIVIDUAL_LESSON
+  GROUP_LESSON
+  OFFSITE_EVENT
+  PEDAGOGICAL_CONSILIUM
+  TEACHERS_GENERAL_MEETING
+  PSYCHOLOGIST_SESSION
+}
+
+enum EventStatus {
+  PLANNED
+  COMPLETED
+  CANCELED
+}
+
+enum ParticipantRole {
+  STUDENT
+  TEACHER
+  CURATOR
+  PSYCHOLOGIST
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model User {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  fullName    String
+  phone       String?
+  role        UserRole
+  googleId    String?     @unique
+  isActive    Boolean     @default(true)
+  timezone    String      @default("Europe/Moscow")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  teacherProfile TeacherProfile?
+  studentProfile StudentProfile?
+  parentProfile  ParentProfile?
+
+  eventParticipants EventParticipant[]
+  createdEvents      Event[]            @relation("EventCreatedBy")
+}
+
+model TeacherProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  subjects        String[]
+  canBeCurator    Boolean @default(false)
+  paymentScheme   String?
+  hourlyRateCents Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rates TeacherRate[]
+}
+
+model StudentProfile {
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  grade              String?
+  diagnosticsSummary String?
+  problemSubjects    String[]
+  requestText        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  parentLinks ParentStudentLink[]
+}
+
+model ParentProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  telegramChatId       String?  @unique
+  telegramEnabled      Boolean  @default(false)
+  morningReminderHour  Int      @default(8)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  studentLinks ParentStudentLink[]
+}
+
+model ParentStudentLink {
+  id                        String @id @default(cuid())
+  parentId                  String
+  studentId                 String
+  relationship              String?
+  receivesMorningReminder   Boolean @default(true)
+  createdAt                 DateTime @default(now())
+
+  parent  ParentProfile  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+}
+
+model Event {
+  id                 String       @id @default(cuid())
+  title              String
+  activityType       ActivityType
+  status             EventStatus  @default(PLANNED)
+  plannedStartAt     DateTime
+  plannedEndAt       DateTime
+  factStartAt        DateTime?
+  factEndAt          DateTime?
+  plannedHours       Int          @default(1)
+  billableHours      Int          @default(0)
+  isPaid             Boolean      @default(true)
+  location           String?
+  notes              String?
+  cancelReasonId     String?
+  cancelComment      String?
+  createdByUserId    String
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  createdBy    User            @relation("EventCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  cancelReason CancelReason?   @relation(fields: [cancelReasonId], references: [id], onDelete: SetNull)
+  participants EventParticipant[]
+
+  @@index([plannedStartAt])
+  @@index([status])
+  @@index([activityType])
+}
+
+model EventParticipant {
+  id                String           @id @default(cuid())
+  eventId           String
+  userId            String
+  participantRole   ParticipantRole
+  attendanceStatus  AttendanceStatus?
+  absenceReason     String?
+  attendedMinutes   Int?
+  createdAt         DateTime         @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId, participantRole])
+  @@index([userId, participantRole])
+}
+
+model CancelReason {
+  id         String  @id @default(cuid())
+  code       String  @unique
+  name       String
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(100)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  events Event[]
+}
+
+model TeacherRate {
+  id                   String       @id @default(cuid())
+  teacherProfileId     String
+  activityType         ActivityType
+  hourlyRateCents      Int
+  effectiveFrom        DateTime
+  effectiveTo          DateTime?
+  createdAt            DateTime @default(now())
+
+  teacherProfile TeacherProfile @relation(fields: [teacherProfileId], references: [id], onDelete: Cascade)
+
+  @@index([teacherProfileId, activityType, effectiveFrom])
+}
