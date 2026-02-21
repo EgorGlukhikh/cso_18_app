@@ -1,80 +1,80 @@
 # CSO 18 App
 
-Production-oriented starter for education centers that need scheduling, attendance tracking, hours accounting, and parent notifications.
+Стартовый продакшен-ориентированный шаблон для образовательных центров: расписание, учет посещаемости, расчет часов и уведомления родителям.
 
-This repository can be reused as a baseline for similar projects: tutoring centers, private schools, language schools, therapy centers, and extracurricular programs.
+Репозиторий можно использовать как базу для похожих проектов: репетиторские центры, частные школы, языковые школы, психологические и развивающие центры.
 
-## What this project already does
-- Event scheduling with statuses: `PLANNED`, `COMPLETED`, `CANCELED`
-- Mandatory cancellation reason for canceled events
-- Planned/factual/billable hours calculation
-- Parent-child links with business limit: max 2 parents per child
-- Per-link reminder flag (`receivesMorningReminder`) to choose who gets notifications
-- Basic analytics APIs (summary and cancellation reasons)
-- Seed data for a real-world family structure
+## Что уже реализовано
+- Планирование событий со статусами: `PLANNED`, `COMPLETED`, `CANCELED`
+- Обязательная причина для несостоявшегося занятия
+- Расчет часов: план / факт / к оплате
+- Связи ребенок-родители с ограничением: максимум 2 родителя на ребенка
+- Флаг получения напоминаний для каждой связи (`receivesMorningReminder`)
+- Базовые API аналитики (сводка и причины отмен)
+- Seed-данные с реальным семейным кейсом
 
-## Business rules implemented
-- 1 lesson = 1 billable hour (with buffer/rest logic handled as business rule)
-- Billable hours are counted only for `COMPLETED` events (MVP rule)
-- `CANCELED` event requires a reason from the catalog
-- Morning reminders are generated only for children linked with `receivesMorningReminder = true`
+## Бизнес-правила (MVP)
+- 1 урок = 1 оплачиваемый час
+- В оплату попадают только события со статусом `COMPLETED`
+- Для `CANCELED` обязательно указание причины
+- Утренние напоминания формируются только для детей, где у родителя включен `receivesMorningReminder`
 
-## Tech stack
+## Технологии
 - Next.js 16 (App Router, TypeScript)
 - Prisma ORM
 - PostgreSQL
-- Zod for request validation
+- Zod для валидации API
 - ESLint
 
-## Project structure
-- `src/app` - UI pages and API routes
-- `src/lib` - shared helpers (`db`, validation, hour calculations)
-- `prisma/schema.prisma` - data model
-- `prisma/seed-cancel-reasons.mjs` - cancellation reasons seed
-- `prisma/seed-family.mjs` - sample family seed
+## Структура проекта
+- `src/app` — UI-страницы и API-роуты
+- `src/lib` — общие модули (`db`, валидация, расчет часов)
+- `prisma/schema.prisma` — модель БД
+- `prisma/seed-cancel-reasons.mjs` — сид причин несостоявшихся
+- `prisma/seed-family.mjs` — сид семейных данных
 
-## Quick start
-1. Install dependencies:
+## Быстрый старт
+1. Установить зависимости:
 ```bash
 npm install
 ```
-2. Create env file:
+2. Создать `.env`:
 ```bash
 cp .env.example .env
 ```
-3. Generate Prisma client and run migrations:
+3. Сгенерировать Prisma Client и выполнить миграции:
 ```bash
 npm run prisma:generate
 npm run prisma:migrate -- --name init
 ```
-4. Seed reference data:
+4. Заполнить справочники и демо-данные:
 ```bash
 npm run prisma:seed-reasons
 npm run prisma:seed-family
 ```
-5. Run dev server:
+5. Запустить приложение:
 ```bash
 npm run dev
 ```
 
-## Environment variables
-Create `.env` from `.env.example`.
+## Переменные окружения
+Создайте `.env` на основе `.env.example`.
 
-Required:
-- `DATABASE_URL` - PostgreSQL connection string
+Обязательно:
+- `DATABASE_URL` — строка подключения к PostgreSQL
 
-## Scripts
-- `npm run dev` - start local development
-- `npm run build` - production build
-- `npm run start` - run production build
-- `npm run lint` - lint checks
-- `npm run prisma:generate` - generate Prisma client
-- `npm run prisma:migrate -- --name <name>` - create/apply migration
-- `npm run prisma:seed-reasons` - seed cancellation reasons
-- `npm run prisma:seed-family` - seed parent/student demo data
+## Скрипты
+- `npm run dev` — запуск в разработке
+- `npm run build` — production build
+- `npm run start` — запуск production (с применением миграций)
+- `npm run lint` — проверка линтером
+- `npm run prisma:generate` — генерация Prisma Client
+- `npm run prisma:migrate -- --name <name>` — создание/применение миграции
+- `npm run prisma:deploy` — применение миграций в проде
+- `npm run prisma:seed-reasons` — сид причин отмен
+- `npm run prisma:seed-family` — сид родителей/учеников
 
-## API overview
-Implemented endpoints:
+## Реализованные API
 - `GET /api/events`
 - `POST /api/events`
 - `GET /api/events/:id`
@@ -87,13 +87,13 @@ Implemented endpoints:
 - `PATCH /api/parent-student-links`
 - `GET /api/parents/:parentProfileId/morning-reminder`
 
-### Example: create event
+## Пример: создать событие
 ```http
 POST /api/events
 Content-Type: application/json
 
 {
-  "title": "Math individual lesson",
+  "title": "Индивидуальный урок математики",
   "activityType": "INDIVIDUAL_LESSON",
   "plannedStartAt": "2026-02-22T08:00:00.000Z",
   "plannedEndAt": "2026-02-22T08:45:00.000Z",
@@ -105,7 +105,7 @@ Content-Type: application/json
 }
 ```
 
-### Example: mark event canceled
+## Пример: отметить как несостоявшееся
 ```http
 POST /api/events/:id/status
 Content-Type: application/json
@@ -113,23 +113,23 @@ Content-Type: application/json
 {
   "status": "CANCELED",
   "cancelReasonId": "<reason_id>",
-  "cancelComment": "Student got sick"
+  "cancelComment": "Ребенок заболел"
 }
 ```
 
-## Reusing this repo for another center
-1. Replace seed scripts with your own organizations, staff, and students.
-2. Add authentication (Google OAuth/Auth.js) and role guards.
-3. Add payroll formulas (rates per teacher/event type).
-4. Integrate Telegram bot scheduler for daily morning messages.
-5. Extend analytics with pivot/grid UI and exports.
+## Как адаптировать под другой центр
+1. Заменить seed-скрипты на свои данные.
+2. Подключить Google OAuth/Auth.js и ролевые ограничения.
+3. Добавить полноценный модуль ставок и выплат.
+4. Подключить Telegram-бота с ежедневной отправкой напоминаний.
+5. Расширить аналитику (pivot/grid, экспорт).
 
-## Deployment notes (Railway-friendly)
-- Use managed PostgreSQL (persistent storage)
-- Keep secrets in platform variables
-- Run Prisma migrations during deploy
-- Avoid storing business data in container filesystem
-- Add DB backup policy and uptime/error monitoring
+## Деплой (Railway)
+- Используйте managed PostgreSQL
+- Храните секреты в Railway Variables
+- Применяйте миграции при старте (`prisma migrate deploy`)
+- Не храните бизнес-данные в локальной файловой системе контейнера
+- Настройте бэкапы БД и мониторинг
 
-## Current status
-MVP foundation: ready for next phase (auth, admin UI, payroll module, Telegram sending worker).
+## Текущий статус
+Собран рабочий MVP-фундамент. Следующий этап: аутентификация, админка пользователей, модуль выплат, отправка Telegram-напоминаний.
