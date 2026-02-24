@@ -1,6 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Modal } from "@/components/ui/modal";
 
 type ParentItem = {
   id: string;
@@ -154,92 +159,141 @@ export default function ParentsPage() {
   }
 
   return (
-    <div className="grid">
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>Родители</h1>
-        <button type="button" onClick={() => setAddOpen(true)}>Добавить</button>
-        {error ? <p className="error">{error}</p> : null}
-      </section>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Родители</CardTitle>
+            <Button onClick={() => setAddOpen(true)}>Добавить</Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {error ? <p className="text-sm text-destructive mb-4">{error}</p> : null}
+          <div className="overflow-x-auto">
+            <table className="table-modern">
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Телефон</th>
+                  <th>Telegram</th>
+                  <th>Дети</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} onClick={() => void openParent(item)} className="cursor-pointer">
+                    <td className="font-medium">{item.user.fullName}</td>
+                    <td>{item.user.phone || "-"}</td>
+                    <td>{item.telegramEnabled ? "Подключен" : "Не подключен"}</td>
+                    <td className="text-sm">{item.studentLinks.map((s) => s.student.user.fullName).join(", ") || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <table>
-          <thead><tr><th>ФИО</th><th>Телефон</th><th>Telegram</th><th>Дети</th></tr></thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} style={{ cursor: "pointer" }} onClick={() => void openParent(item)}>
-                <td>{item.user.fullName}</td>
-                <td>{item.user.phone || "-"}</td>
-                <td>{item.telegramEnabled ? "Подключен" : "Не подключен"}</td>
-                <td>{item.studentLinks.map((s) => s.student.user.fullName).join(", ") || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      {addOpen ? (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="card" style={{ width: "min(760px, 95vw)" }}>
-            <h2 style={{ marginTop: 0 }}>Добавить родителя</h2>
-            <form className="grid cols-2" onSubmit={onSubmit}>
-              <label>ФИО<input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></label>
-              <label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-              <label>Телефон<input value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
-              <label>Час напоминания<input type="number" min={0} max={23} value={morningReminderHour} onChange={(e) => setMorningReminderHour(e.target.value)} /></label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="checkbox" checked={telegramEnabled} onChange={(e) => setTelegramEnabled(e.target.checked)} />
-                Telegram включен
-              </label>
-              <label style={{ gridColumn: "1 / -1" }}>Комментарий<textarea rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} /></label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="submit">Сохранить</button>
-                <button type="button" className="secondary" onClick={() => setAddOpen(false)}>Закрыть</button>
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} className="w-full max-w-2xl">
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle>Добавить родителя</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={onSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ФИО</label>
+                  <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Телефон</label>
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Час напоминания</label>
+                  <Input type="number" min={0} max={23} value={morningReminderHour} onChange={(e) => setMorningReminderHour(e.target.value)} />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" checked={telegramEnabled} onChange={(e) => setTelegramEnabled(e.target.checked)} className="h-4 w-4" />
+                  <label className="text-sm font-medium">Telegram включен</label>
+                </div>
+                <div className="col-span-full space-y-2">
+                  <label className="text-sm font-medium">Комментарий</label>
+                  <textarea rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} className="input-modern" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button type="submit">Сохранить</Button>
+                <Button type="button" variant="secondary" onClick={() => setAddOpen(false)}>Закрыть</Button>
               </div>
             </form>
-          </div>
-        </div>
-      ) : null}
+          </CardContent>
+        </Card>
+      </Modal>
 
-      {activeParent ? (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="card" style={{ width: "min(860px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ marginTop: 0 }}>{activeParent.user.fullName}</h2>
-              <button className="secondary" onClick={() => setActiveParent(null)}>Закрыть</button>
-            </div>
-
-            <div className="grid cols-2">
-              <label>Телефон<input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} /></label>
-              <label>Час напоминания<input type="number" min={0} max={23} value={parentReminderHour} onChange={(e) => setParentReminderHour(e.target.value)} /></label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="checkbox" checked={parentTgEnabled} onChange={(e) => setParentTgEnabled(e.target.checked)} />
-                Telegram включен
-              </label>
-              <label style={{ gridColumn: "1 / -1" }}>Комментарий<textarea rows={3} value={parentComment} onChange={(e) => setParentComment(e.target.value)} /></label>
-            </div>
-            <p style={{ color: "var(--muted)", marginTop: 8 }}>Статус Telegram: {activeParent.telegramChatId ? "Привязан" : "Не привязан"}</p>
-            <button onClick={saveParent}>Сохранить</button>
-
-            <h3 style={{ marginTop: 18 }}>Привязанные дети</h3>
-            <div className="grid" style={{ gap: 8 }}>
-              {activeParent.studentLinks.map((link) => (
-                <div key={link.id} className="card" style={{ margin: 0, padding: 8 }}>
-                  {link.student.user.fullName} ({link.relationship || "ребенок"})
+      <Modal open={!!activeParent} onClose={() => setActiveParent(null)} className="w-full max-w-3xl">
+        {activeParent && (
+          <Card className="border-0 shadow-none">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>{activeParent.user.fullName}</CardTitle>
+                <Button variant="secondary" onClick={() => setActiveParent(null)}>Закрыть</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Телефон</label>
+                  <Input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
                 </div>
-              ))}
-            </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Час напоминания</label>
+                  <Input type="number" min={0} max={23} value={parentReminderHour} onChange={(e) => setParentReminderHour(e.target.value)} />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input type="checkbox" checked={parentTgEnabled} onChange={(e) => setParentTgEnabled(e.target.checked)} className="h-4 w-4" />
+                  <label className="text-sm font-medium">Telegram включен</label>
+                </div>
+                <div className="col-span-full space-y-2">
+                  <label className="text-sm font-medium">Комментарий</label>
+                  <textarea rows={3} value={parentComment} onChange={(e) => setParentComment(e.target.value)} className="input-modern" />
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Статус Telegram: {activeParent.telegramChatId ? "Привязан" : "Не привязан"}
+              </p>
+              <Button onClick={saveParent}>Сохранить</Button>
 
-            <div className="icon-switch" style={{ marginTop: 8 }}>
-              <select value={linkStudentId} onChange={(e) => setLinkStudentId(e.target.value)} style={{ maxWidth: 280 }}>
-                <option value="">Выберите ребенка</option>
-                {students.map((student) => <option key={student.id} value={student.id}>{student.user.fullName}</option>)}
-              </select>
-              <input value={relationship} onChange={(e) => setRelationship(e.target.value)} style={{ maxWidth: 220 }} />
-              <button type="button" onClick={addStudentLink}>Привязать ребенка</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Привязанные дети</h3>
+                <div className="space-y-2">
+                  {activeParent.studentLinks.map((link) => (
+                    <Card key={link.id} className="p-4">
+                      <p className="text-sm">
+                        {link.student.user.fullName} <span className="text-muted-foreground">({link.relationship || "ребенок"})</span>
+                      </p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 flex-wrap">
+                <Select value={linkStudentId} onChange={(e) => setLinkStudentId(e.target.value)} className="flex-1 min-w-[200px]">
+                  <option value="">Выберите ребенка</option>
+                  {students.map((student) => <option key={student.id} value={student.id}>{student.user.fullName}</option>)}
+                </Select>
+                <Input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Отношение" className="flex-1 min-w-[150px]" />
+                <Button type="button" onClick={addStudentLink}>Привязать ребенка</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </Modal>
     </div>
   );
 }
