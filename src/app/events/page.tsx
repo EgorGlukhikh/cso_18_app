@@ -180,6 +180,14 @@ function buildDayLayout(events: EventItem[]) {
   return cards;
 }
 
+function toggleId(list: string[], id: string) {
+  return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+}
+
+function isAdministrativeType(type: ActivityType) {
+  return type === "TEACHERS_GENERAL_MEETING";
+}
+
 export default function EventsPage() {
   const today = useMemo(() => new Date(), []);
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
@@ -301,11 +309,21 @@ export default function EventsPage() {
   }, [range, status]);
 
   useEffect(() => {
-    if (activityType !== "GROUP_LESSON") {
-      setTeacherIds((prev) => (prev.length ? [prev[0]] : []));
-      setStudentIds((prev) => (prev.length ? [prev[0]] : []));
+    if (activityType === "GROUP_LESSON") {
+      return;
     }
-  }, [activityType]);
+
+    if (isAdministrativeType(activityType)) {
+      setStudentIds([]);
+      if (!teacherIds.length && teachers[0]) {
+        setTeacherIds([teachers[0].user.id]);
+      }
+      return;
+    }
+
+    setTeacherIds((prev) => (prev.length ? [prev[0]] : []));
+    setStudentIds((prev) => (prev.length ? [prev[0]] : []));
+  }, [activityType, teacherIds.length, teachers]);
 
   function toggleCategory(filter: CategoryFilter) {
     setCategoryFilters((prev) => {
@@ -344,10 +362,14 @@ export default function EventsPage() {
     start.setHours(h || 0, m || 0, 0, 0);
     const end = new Date(start.getTime() + Number(durationHours || "1") * 60 * 60000);
 
-    const selectedTeacherIds =
-      activityType === "GROUP_LESSON" ? teacherIds : teacherIds.slice(0, 1);
-    const selectedStudentIds =
-      activityType === "GROUP_LESSON" ? studentIds : studentIds.slice(0, 1);
+    const selectedTeacherIds = activityType === "GROUP_LESSON" || isAdministrativeType(activityType)
+      ? teacherIds
+      : teacherIds.slice(0, 1);
+    const selectedStudentIds = activityType === "GROUP_LESSON"
+      ? studentIds
+      : isAdministrativeType(activityType)
+        ? []
+        : studentIds.slice(0, 1);
 
     const participants = [
       ...selectedTeacherIds.map((id) => ({ userId: id, participantRole: "TEACHER" as ParticipantRole })),
@@ -769,15 +791,35 @@ export default function EventsPage() {
               </label>
               <label>
                 Преподаватель
-                {activityType === "GROUP_LESSON" ? (
-                  <select
-                    multiple
-                    size={4}
-                    value={teacherIds}
-                    onChange={(e) => setTeacherIds(Array.from(e.target.selectedOptions).map((option) => option.value))}
+                {activityType === "GROUP_LESSON" || isAdministrativeType(activityType) ? (
+                  <div
+                    style={{
+                      border: "2px solid var(--input)",
+                      borderRadius: 12,
+                      padding: 10,
+                      maxHeight: 180,
+                      overflowY: "auto"
+                    }}
                   >
-                    {teachers.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-                  </select>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                      Выбрано: {teacherIds.length}
+                    </div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {teachers.map((item) => {
+                        const checked = teacherIds.includes(item.user.id);
+                        return (
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setTeacherIds((prev) => toggleId(prev, item.user.id))}
+                            />
+                            <span>{item.user.fullName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ) : (
                   <select
                     value={teacherIds[0] ?? ""}
@@ -788,27 +830,49 @@ export default function EventsPage() {
                   </select>
                 )}
               </label>
-              <label>
-                Ученик
-                {activityType === "GROUP_LESSON" ? (
-                  <select
-                    multiple
-                    size={4}
-                    value={studentIds}
-                    onChange={(e) => setStudentIds(Array.from(e.target.selectedOptions).map((option) => option.value))}
-                  >
-                    {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-                  </select>
-                ) : (
-                  <select
-                    value={studentIds[0] ?? ""}
-                    onChange={(e) => setStudentIds(e.target.value ? [e.target.value] : [])}
-                  >
-                    <option value="">Не выбран</option>
-                    {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
-                  </select>
-                )}
-              </label>
+              {!isAdministrativeType(activityType) ? (
+                <label>
+                  Ученик
+                  {activityType === "GROUP_LESSON" ? (
+                    <div
+                      style={{
+                        border: "2px solid var(--input)",
+                        borderRadius: 12,
+                        padding: 10,
+                        maxHeight: 180,
+                        overflowY: "auto"
+                      }}
+                    >
+                      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                        Выбрано: {studentIds.length}
+                      </div>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {students.map((item) => {
+                          const checked = studentIds.includes(item.user.id);
+                          return (
+                            <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => setStudentIds((prev) => toggleId(prev, item.user.id))}
+                              />
+                              <span>{item.user.fullName}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <select
+                      value={studentIds[0] ?? ""}
+                      onChange={(e) => setStudentIds(e.target.value ? [e.target.value] : [])}
+                    >
+                      <option value="">Не выбран</option>
+                      {students.map((item) => <option key={item.id} value={item.user.id}>{item.user.fullName}</option>)}
+                    </select>
+                  )}
+                </label>
+              ) : null}
               <div style={{ display: "flex", alignItems: "end" }}><button type="submit">Создать</button></div>
             </form>
           </div>

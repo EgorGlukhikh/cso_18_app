@@ -54,6 +54,10 @@ function endOfMonth(base: Date) {
   return new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
+function toggleId(list: string[], id: string) {
+  return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+}
+
 export default function TeachersPage() {
   const [items, setItems] = useState<TeacherItem[]>([]);
   const [students, setStudents] = useState<StudentOption[]>([]);
@@ -148,6 +152,12 @@ export default function TeachersPage() {
     }
   }, [subjectsCatalog, createSubject]);
 
+  useEffect(() => {
+    if (createType === "TEACHERS_GENERAL_MEETING") {
+      setCreateStudentIds([]);
+    }
+  }, [createType]);
+
   function toggleSubject(list: string[], value: string, setter: (items: string[]) => void) {
     if (list.includes(value)) setter(list.filter((v) => v !== value));
     else setter([...list, value]);
@@ -218,8 +228,10 @@ export default function TeachersPage() {
     const end = new Date(start.getTime() + Number(createDurationHours) * 60 * 60000);
 
     const participants = [{ userId: activeTeacher.user.id, participantRole: "TEACHER" }];
-    for (const sid of createStudentIds) {
-      participants.push({ userId: sid, participantRole: "STUDENT" });
+    if (createType !== "TEACHERS_GENERAL_MEETING") {
+      for (const sid of createStudentIds) {
+        participants.push({ userId: sid, participantRole: "STUDENT" });
+      }
     }
 
     const response = await fetch("/api/events", {
@@ -432,12 +444,39 @@ export default function TeachersPage() {
                   <option value="4">4 часа</option>
                 </select>
               </label>
-              <label style={{ gridColumn: "1 / -1" }}>
-                Студенты
-                <select multiple value={createStudentIds} onChange={(e) => setCreateStudentIds(Array.from(e.target.selectedOptions).map((o) => o.value))}>
-                  {students.map((student) => <option key={student.id} value={student.user.id}>{student.user.fullName}</option>)}
-                </select>
-              </label>
+              {createType !== "TEACHERS_GENERAL_MEETING" ? (
+                <label style={{ gridColumn: "1 / -1" }}>
+                  Студенты
+                  <div
+                    style={{
+                      border: "2px solid var(--input)",
+                      borderRadius: 12,
+                      padding: 10,
+                      maxHeight: 180,
+                      overflowY: "auto"
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+                      Выбрано: {createStudentIds.length}
+                    </div>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      {students.map((student) => {
+                        const checked = createStudentIds.includes(student.user.id);
+                        return (
+                          <label key={student.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => setCreateStudentIds((prev) => toggleId(prev, student.user.id))}
+                            />
+                            <span>{student.user.fullName}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </label>
+              ) : null}
               <div><button type="submit">Создать событие</button></div>
             </form>
           </div>
