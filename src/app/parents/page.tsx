@@ -139,6 +139,30 @@ export default function ParentsPage() {
     setActiveParent(refreshed);
   }
 
+  async function unlinkParentTelegram() {
+    if (!activeParent) return;
+
+    const response = await fetch(`/api/parents/${activeParent.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        telegramChatId: null,
+        telegramEnabled: false
+      })
+    });
+
+    if (!response.ok) {
+      setError("Не удалось отвязать Telegram");
+      return;
+    }
+
+    const refreshed = (await response.json()) as ParentItem;
+    setActiveParent(refreshed);
+    setParentTelegramChatId("");
+    setParentTgEnabled(false);
+    await load();
+  }
+
   async function addStudentLink() {
     if (!activeParent || !linkStudentId) return;
 
@@ -279,7 +303,17 @@ export default function ParentsPage() {
               <p className="text-sm text-muted-foreground">
                 Статус Telegram: {activeParent.telegramChatId ? "Привязан" : "Не привязан"}
               </p>
-              <Button onClick={saveParent}>Сохранить</Button>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={saveParent}>Сохранить</Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={unlinkParentTelegram}
+                  disabled={!activeParent.telegramChatId}
+                >
+                  Отвязать Telegram
+                </Button>
+              </div>
 
               <div>
                 <h3 className="mb-4 text-lg font-semibold">Привязанные дети</h3>
