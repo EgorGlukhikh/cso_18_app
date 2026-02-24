@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { db } from "@/lib/db";
+import { notifyParentsAboutCreatedEvent } from "@/lib/event-notifications";
 import { computeBillableHours } from "@/lib/hours";
 import { badRequest, serverError } from "@/lib/http";
 import { validateLessonParallelism } from "@/lib/schedule-rules";
@@ -154,6 +155,13 @@ export async function POST(request: NextRequest) {
         participants: true
       }
     });
+
+    // Notification is best-effort: event creation should not fail if Telegram is unavailable.
+    try {
+      await notifyParentsAboutCreatedEvent(event.id);
+    } catch (error) {
+      console.error("notifyParentsAboutCreatedEvent failed", error);
+    }
 
     return NextResponse.json(event, { status: 201 });
   } catch (error) {
