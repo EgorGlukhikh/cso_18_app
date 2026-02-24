@@ -1,7 +1,13 @@
 const TELEGRAM_API_BASE = "https://api.telegram.org";
 
 function getTelegramBotToken() {
-  return process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+  return (
+    process.env.TELEGRAM_BOT_TOKEN?.trim() ||
+    process.env.TELEGRAM_TOKEN?.trim() ||
+    process.env.BOT_TOKEN?.trim() ||
+    process.env.TG_BOT_TOKEN?.trim() ||
+    ""
+  );
 }
 
 export function isTelegramConfigured() {
