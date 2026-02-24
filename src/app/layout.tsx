@@ -43,6 +43,12 @@ export default function RootLayout({
                 </Link>
                 <Link
                   className="px-3 py-2 rounded-xl text-sm font-medium hover:bg-muted transition-colors"
+                  href="/teacher-calendar"
+                >
+                  Календарь педагога
+                </Link>
+                <Link
+                  className="px-3 py-2 rounded-xl text-sm font-medium hover:bg-muted transition-colors"
                   href="/analytics"
                 >
                   Аналитика
