@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -273,11 +274,14 @@ export default function ParentsPage() {
                 <h3 className="mb-4 text-lg font-semibold">Привязанные дети</h3>
                 <div className="space-y-2">
                   {activeParent.studentLinks.map((link) => (
-                    <Card key={link.id} className="p-4">
-                      <p className="text-sm">
+                    <Card key={link.id} className="p-0">
+                      <Link
+                        href={`/students?studentId=${link.student.id}`}
+                        className="block rounded-2xl p-4 text-sm transition-colors hover:bg-muted/50"
+                      >
                         {link.student.user.fullName}{" "}
                         <span className="text-muted-foreground">({link.relationship || "ребенок"})</span>
-                      </p>
+                      </Link>
                     </Card>
                   ))}
                 </div>

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type ParentLink = {
@@ -72,6 +73,9 @@ async function fileToBase64(file: File) {
 }
 
 export default function StudentsPage() {
+  const router = useRouter();
+  const [studentIdFromQuery, setStudentIdFromQuery] = useState<string | null>(null);
+
   const [items, setItems] = useState<StudentItem[]>([]);
   const [parents, setParents] = useState<ParentOption[]>([]);
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
@@ -164,6 +168,19 @@ export default function StudentsPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    setStudentIdFromQuery(new URLSearchParams(window.location.search).get("studentId"));
+  }, []);
+
+  useEffect(() => {
+    if (!studentIdFromQuery) return;
+    void openStudentById(studentIdFromQuery).then(() => {
+      router.replace("/students", { scroll: false });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentIdFromQuery, router]);
+
+  useEffect(() => {
     if (activeStudent) {
       void loadSchedule(activeStudent.id);
     }
@@ -202,8 +219,8 @@ export default function StudentsPage() {
     await load();
   }
 
-  async function openStudent(item: StudentItem) {
-    const res = await fetch(`/api/students/${item.id}`);
+  async function openStudentById(studentId: string) {
+    const res = await fetch(`/api/students/${studentId}`);
     if (!res.ok) return;
     const full = (await res.json()) as StudentItem;
     setActiveStudent(full);
@@ -211,7 +228,11 @@ export default function StudentsPage() {
     setStudentPhone(full.user.phone ?? "");
     setIopName(full.iopDocxFileName ?? null);
     setIopData(null);
-    await loadSchedule(item.id);
+    await loadSchedule(studentId);
+  }
+
+  async function openStudent(item: StudentItem) {
+    await openStudentById(item.id);
   }
 
   async function saveStudent() {
@@ -322,6 +343,8 @@ export default function StudentsPage() {
     return days;
   }, [from, to]);
 
+  const todayKey = useMemo(() => toDayString(new Date()), []);
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
@@ -423,9 +446,20 @@ export default function StudentsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 8 }}>
                 {calendarDays.map((day) => {
                   const key = toDayString(day);
+                  const isToday = key === todayKey;
                   const dayItems = visibleSchedule.filter((item) => toDayString(new Date(item.plannedStartAt)) === key);
                   return (
-                    <div key={key} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 8, minHeight: 120 }}>
+                    <div
+                      key={key}
+                      className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg"
+                      style={{
+                        margin: 0,
+                        padding: 8,
+                        minHeight: 120,
+                        borderColor: isToday ? "hsl(var(--primary))" : undefined,
+                        boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.25)" : undefined
+                      }}
+                    >
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
                       {dayItems.slice(0, 3).map((item) => {
                         const c = colorByCategory(item.category);

@@ -435,6 +435,7 @@ export default function EventsPage() {
     if (dateFilter === "day") return dayFilterDate;
     return toDayString(new Date());
   }, [dateFilter, dayFilterDate]);
+  const todayKey = useMemo(() => toDayString(new Date()), []);
 
   const dayEvents = useMemo(() => eventsByDay.get(dayKey) ?? [], [eventsByDay, dayKey]);
   const dayCards = useMemo(() => buildDayLayout(dayEvents), [dayEvents]);
@@ -612,7 +613,16 @@ export default function EventsPage() {
       {viewMode === "calendar" && scope === "day" ? (
         <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
-          <div style={{ position: "relative", height: calendarHeight, border: "1px solid var(--border)", borderRadius: 12 }} onClick={onDayCalendarClick}>
+          <div
+            style={{
+              position: "relative",
+              height: calendarHeight,
+              border: dayKey === todayKey ? "2px solid hsl(var(--primary))" : "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: dayKey === todayKey ? "0 0 0 2px hsl(var(--primary) / 0.2)" : undefined
+            }}
+            onClick={onDayCalendarClick}
+          >
             {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
               const hour = SLOT_START_HOUR + idx;
               const top = idx * 60 * PIXELS_PER_MINUTE;
@@ -663,9 +673,19 @@ export default function EventsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
             {weekDays.map((day) => {
               const key = toDayString(day);
+              const isToday = key === todayKey;
               const items = eventsByDay.get(key) ?? [];
               return (
-                <article key={key} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 10 }}>
+                <article
+                  key={key}
+                  className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg"
+                  style={{
+                    margin: 0,
+                    padding: 10,
+                    borderColor: isToday ? "hsl(var(--primary))" : undefined,
+                    boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.25)" : undefined
+                  }}
+                >
                   <button type="button" className="secondary" style={{ width: "100%", marginBottom: 8 }} onClick={() => openCreateModal(key)}>
                     {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
                   </button>
@@ -691,12 +711,19 @@ export default function EventsPage() {
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => <strong key={d} style={{ textAlign: "center", color: "var(--muted)" }}>{d}</strong>)}
             {monthGridDays.map((day) => {
               const key = toDayString(day);
+              const isToday = key === todayKey;
               const items = eventsByDay.get(key) ?? [];
               return (
                 <div
                   key={key}
                   className="calendar-month-cell rounded-2xl border-2 border-border bg-card p-8 shadow-lg"
-                  style={{ margin: 0, padding: 8, minHeight: 140 }}
+                  style={{
+                    margin: 0,
+                    padding: 8,
+                    minHeight: 140,
+                    borderColor: isToday ? "hsl(var(--primary))" : undefined,
+                    boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.25)" : undefined
+                  }}
                 >
                   <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
                     {day.getDate()}
