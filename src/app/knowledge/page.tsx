@@ -1,3 +1,5 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 const articles = [
   {
     title: "Как создать занятие",
@@ -67,28 +69,34 @@ const articles = [
 
 export default function KnowledgePage() {
   return (
-    <div className="grid">
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>База знаний</h1>
-        <p style={{ marginBottom: 0 }}>
-          Короткие инструкции для администраторов, преподавателей и кураторов.
-        </p>
-      </section>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>База знаний</CardTitle>
+          <CardDescription>
+            Короткие инструкции для администраторов, преподавателей и кураторов
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-      <section className="grid">
+      <div className="grid gap-6">
         {articles.map((article) => (
-          <article key={article.title} className="card">
-            <h2 style={{ marginTop: 0 }}>{article.title}</h2>
-            <ol style={{ margin: 0, paddingLeft: 18 }}>
-              {article.steps.map((step) => (
-                <li key={step} style={{ marginBottom: 8 }}>
-                  {step}
-                </li>
-              ))}
-            </ol>
-          </article>
+          <Card key={article.title}>
+            <CardHeader>
+              <CardTitle className="text-xl">{article.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal list-inside space-y-3 text-sm">
+                {article.steps.map((step, idx) => (
+                  <li key={idx} className="leading-relaxed">
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
         ))}
-      </section>
+      </div>
     </div>
   );
 }

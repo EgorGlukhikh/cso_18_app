@@ -1,6 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type Summary = {
   period: { from: string | null; to: string | null };
@@ -39,90 +42,123 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="grid">
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>Аналитика</h1>
-        <div className="grid cols-2">
-          <label>
-            Период с
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </label>
-          <label>
-            Период по
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </label>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <button onClick={load} disabled={loading}>
-            {loading ? "Загрузка..." : "Построить"}
-          </button>
-        </div>
-      </section>
+    <div className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Аналитика</CardTitle>
+          <CardDescription>Сводные отчеты по событиям, часам и причинам отмен</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="from" className="text-sm font-medium text-muted-foreground">
+                Период с
+              </label>
+              <Input
+                id="from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="to" className="text-sm font-medium text-muted-foreground">
+                Период по
+              </label>
+              <Input
+                id="to"
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col justify-end">
+              <Button onClick={load} disabled={loading}>
+                {loading ? "Загрузка..." : "Построить"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Свод по часам</h2>
-        {summary ? (
-          <table>
-            <tbody>
-              <tr>
-                <th>Запланировано событий</th>
-                <td>{summary.eventCounts.planned}</td>
-              </tr>
-              <tr>
-                <th>Состоялось событий</th>
-                <td>{summary.eventCounts.completed}</td>
-              </tr>
-              <tr>
-                <th>Не состоялось событий</th>
-                <td>{summary.eventCounts.canceled}</td>
-              </tr>
-              <tr>
-                <th>Часы план</th>
-                <td>{summary.hours.planned}</td>
-              </tr>
-              <tr>
-                <th>Часы факт</th>
-                <td>{summary.hours.factual}</td>
-              </tr>
-              <tr>
-                <th>Часы к оплате</th>
-                <td>{summary.hours.billable}</td>
-              </tr>
-              <tr>
-                <th>Доходимость</th>
-                <td>{summary.conversion.attendanceRate}%</td>
-              </tr>
-            </tbody>
-          </table>
-        ) : (
-          <p>Выберите период и нажмите &quot;Построить&quot;.</p>
-        )}
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Свод по часам</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {summary ? (
+            <div className="overflow-x-auto">
+              <table className="table-modern">
+                <tbody>
+                  <tr>
+                    <th className="font-semibold">Запланировано событий</th>
+                    <td className="text-right font-bold">{summary.eventCounts.planned}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Состоялось событий</th>
+                    <td className="text-right font-bold text-green-600">{summary.eventCounts.completed}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Не состоялось событий</th>
+                    <td className="text-right font-bold text-red-600">{summary.eventCounts.canceled}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Часы план</th>
+                    <td className="text-right font-bold">{summary.hours.planned}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Часы факт</th>
+                    <td className="text-right font-bold">{summary.hours.factual}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Часы к оплате</th>
+                    <td className="text-right font-bold text-primary">{summary.hours.billable}</td>
+                  </tr>
+                  <tr>
+                    <th className="font-semibold">Доходимость</th>
+                    <td className="text-right font-bold text-primary">{summary.conversion.attendanceRate}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="empty-state">Выберите период и нажмите «Построить».</p>
+          )}
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Причины несостоявшихся</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Причина</th>
-              <th>Количество</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reasons.map((item) => (
-              <tr key={`${item.reasonId}-${item.reasonName}`}>
-                <td>{item.reasonName}</td>
-                <td>{item.count}</td>
-              </tr>
-            ))}
-            {!reasons.length && (
-              <tr>
-                <td colSpan={2}>Нет данных.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Причины несостоявшихся</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="table-modern">
+              <thead>
+                <tr>
+                  <th>Причина</th>
+                  <th className="text-right">Количество</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reasons.map((item) => (
+                  <tr key={`${item.reasonId}-${item.reasonName}`}>
+                    <td className="font-medium">{item.reasonName}</td>
+                    <td className="text-right font-semibold">{item.count}</td>
+                  </tr>
+                ))}
+                {!reasons.length && (
+                  <tr>
+                    <td colSpan={2} className="empty-state">
+                      Нет данных.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

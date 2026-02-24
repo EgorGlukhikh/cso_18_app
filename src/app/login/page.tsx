@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,26 +36,51 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h1 style={{ marginTop: 0 }}>Вход в CRM</h1>
-      <form onSubmit={onSubmit} className="grid">
-        <label>
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} />
-        </label>
-        <label>
-          Пароль
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {error ? <p style={{ color: "#b10028", margin: 0 }}>{error}</p> : null}
-        <button type="submit" disabled={loading}>
-          {loading ? "Вход..." : "Войти"}
-        </button>
-      </form>
-      <p style={{ marginBottom: 0, marginTop: 12, color: "#4c5967" }}>
-        Тестовая учетка: <code>admin@admin.ru</code> / <code>12345</code>
-      </p>
+    <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Вход в CRM</CardTitle>
+          <CardDescription>Введите данные для входа в систему</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={onSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Пароль
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error ? (
+              <p className="text-sm text-destructive">{error}</p>
+            ) : null}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Вход..." : "Войти"}
+            </Button>
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Тестовая учетка: <code className="bg-muted px-2 py-1 rounded">admin@admin.ru</code> /{" "}
+              <code className="bg-muted px-2 py-1 rounded">12345</code>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
