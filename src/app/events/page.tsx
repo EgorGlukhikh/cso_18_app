@@ -576,6 +576,7 @@ export default function EventsPage() {
   }
 
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
+  const hourlyGuideBorder = "1px solid hsl(var(--foreground) / 0.16)";
 
   return (
     <div className="space-y-6">
@@ -726,7 +727,7 @@ export default function EventsPage() {
                     const hour = SLOT_START_HOUR + idx;
                     const top = idx * 60 * PIXELS_PER_MINUTE;
                     return (
-                      <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }}>
+                      <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: hourlyGuideBorder, pointerEvents: "none" }}>
                         <span style={{ position: "absolute", left: 6, top: -9, fontSize: 11, color: "var(--muted)" }}>
                           {String(hour).padStart(2, "0")}:00
                         </span>
@@ -757,7 +758,7 @@ export default function EventsPage() {
                       {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
                         const top = idx * 60 * PIXELS_PER_MINUTE;
                         return (
-                          <div key={`${key}-${idx}`} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }} />
+                          <div key={`${key}-${idx}`} style={{ position: "absolute", top, left: 0, right: 0, borderTop: hourlyGuideBorder, pointerEvents: "none" }} />
                         );
                       })}
 

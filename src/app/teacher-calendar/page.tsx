@@ -270,6 +270,7 @@ export default function TeacherCalendarPage() {
   }, [teacherUserId, rangeFrom, rangeTo]);
 
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
+  const hourlyGuideBorder = "1px solid hsl(var(--foreground) / 0.16)";
 
   function moveWeek(days: number) {
     const next = addDays(weekStart, days);
@@ -405,7 +406,7 @@ export default function TeacherCalendarPage() {
                     const hour = SLOT_START_HOUR + idx;
                     const top = idx * 60 * PIXELS_PER_MINUTE;
                     return (
-                      <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }}>
+                      <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: hourlyGuideBorder, pointerEvents: "none" }}>
                         <span style={{ position: "absolute", left: 6, top: -9, fontSize: 11, color: "var(--muted)" }}>
                           {String(hour).padStart(2, "0")}:00
                         </span>
@@ -438,7 +439,7 @@ export default function TeacherCalendarPage() {
                       {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
                         const top = idx * 60 * PIXELS_PER_MINUTE;
                         return (
-                          <div key={`${key}-${idx}`} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }} />
+                          <div key={`${key}-${idx}`} style={{ position: "absolute", top, left: 0, right: 0, borderTop: hourlyGuideBorder, pointerEvents: "none" }} />
                         );
                       })}
 
@@ -559,4 +560,3 @@ export default function TeacherCalendarPage() {
     </div>
   );
 }
-
