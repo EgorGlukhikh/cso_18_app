@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,16 +55,20 @@ function getStudentNames(event: EventItem) {
 }
 
 function statusLabel(status: EventItem["status"]) {
-  if (status === "PLANNED") return "Запланировано";
-  if (status === "COMPLETED") return "Состоялось";
-  return "Не состоялось";
+  if (status === "PLANNED") return "Р—Р°РїР»Р°РЅРёСЂРѕРІР°РЅРѕ";
+  if (status === "COMPLETED") return "РЎРѕСЃС‚РѕСЏР»РѕСЃСЊ";
+  return "РќРµ СЃРѕСЃС‚РѕСЏР»РѕСЃСЊ";
 }
 
 function eventReason(event: EventItem) {
   if (event.status !== "CANCELED") return "-";
-  return event.cancelReason?.name || event.cancelComment || "Причина не указана";
+  return event.cancelReason?.name || event.cancelComment || "РџСЂРёС‡РёРЅР° РЅРµ СѓРєР°Р·Р°РЅР°";
 }
 
+function payableHours(event: EventItem) {
+  if (event.status !== "COMPLETED") return 0;
+  return Math.max(0, event.billableHours);
+}
 export default function AnalyticsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -103,7 +107,7 @@ export default function AnalyticsPage() {
 
     if (!eventsRes.ok) {
       const payload = (await eventsRes.json().catch(() => ({}))) as { error?: string };
-      setError(payload.error ?? "Не удалось загрузить аналитику");
+      setError(payload.error ?? "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р°РЅР°Р»РёС‚РёРєСѓ");
       setLoading(false);
       return;
     }
@@ -125,7 +129,7 @@ export default function AnalyticsPage() {
 
     const plannedHours = events.reduce((sum, item) => sum + item.plannedHours, 0);
     const factualHours = completed.reduce((sum, item) => sum + item.plannedHours, 0);
-    const billableHours = completed.reduce((sum, item) => sum + item.billableHours, 0);
+    const billableHours = events.reduce((sum, item) => sum + payableHours(item), 0);
     const attendanceRate = events.length ? Number(((completed.length / events.length) * 100).toFixed(2)) : 0;
 
     return {
@@ -164,7 +168,7 @@ export default function AnalyticsPage() {
       const row = byDay.get(day)!;
       row.totalCount += 1;
       row.plannedHours += item.plannedHours;
-      row.billableHours += item.billableHours;
+      row.billableHours += payableHours(item);
       if (item.status === "CANCELED") row.canceledCount += 1;
     }
 
@@ -188,13 +192,13 @@ export default function AnalyticsPage() {
   }, [metricModal, summary, events]);
 
   const metricTitle = useMemo(() => {
-    if (metricModal === "planned_count") return "Список запланированных занятий";
-    if (metricModal === "completed_count") return "Список состоявшихся занятий";
-    if (metricModal === "canceled_count") return "Список несостоявшихся занятий";
-    if (metricModal === "planned_hours") return "События в расчете часов план";
-    if (metricModal === "factual_hours") return "События в расчете часов факт";
-    if (metricModal === "billable_hours") return "События в расчете часов к оплате";
-    if (metricModal === "attendance_rate") return "События в расчете доходимости";
+    if (metricModal === "planned_count") return "РЎРїРёСЃРѕРє Р·Р°РїР»Р°РЅРёСЂРѕРІР°РЅРЅС‹С… Р·Р°РЅСЏС‚РёР№";
+    if (metricModal === "completed_count") return "РЎРїРёСЃРѕРє СЃРѕСЃС‚РѕСЏРІС€РёС…СЃСЏ Р·Р°РЅСЏС‚РёР№";
+    if (metricModal === "canceled_count") return "РЎРїРёСЃРѕРє РЅРµСЃРѕСЃС‚РѕСЏРІС€РёС…СЃСЏ Р·Р°РЅСЏС‚РёР№";
+    if (metricModal === "planned_hours") return "РЎРѕР±С‹С‚РёСЏ РІ СЂР°СЃС‡РµС‚Рµ С‡Р°СЃРѕРІ РїР»Р°РЅ";
+    if (metricModal === "factual_hours") return "РЎРѕР±С‹С‚РёСЏ РІ СЂР°СЃС‡РµС‚Рµ С‡Р°СЃРѕРІ С„Р°РєС‚";
+    if (metricModal === "billable_hours") return "РЎРѕР±С‹С‚РёСЏ РІ СЂР°СЃС‡РµС‚Рµ С‡Р°СЃРѕРІ Рє РѕРїР»Р°С‚Рµ";
+    if (metricModal === "attendance_rate") return "РЎРѕР±С‹С‚РёСЏ РІ СЂР°СЃС‡РµС‚Рµ РґРѕС…РѕРґРёРјРѕСЃС‚Рё";
     return "";
   }, [metricModal]);
 
@@ -202,33 +206,33 @@ export default function AnalyticsPage() {
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Аналитика</CardTitle>
-          <CardDescription>Свод по занятиям, часам и причинам отмен с детализацией по каждому показателю</CardDescription>
+          <CardTitle>РђРЅР°Р»РёС‚РёРєР°</CardTitle>
+          <CardDescription>РЎРІРѕРґ РїРѕ Р·Р°РЅСЏС‚РёСЏРј, С‡Р°СЃР°Рј Рё РїСЂРёС‡РёРЅР°Рј РѕС‚РјРµРЅ СЃ РґРµС‚Р°Р»РёР·Р°С†РёРµР№ РїРѕ РєР°Р¶РґРѕРјСѓ РїРѕРєР°Р·Р°С‚РµР»СЋ</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
             <div className="flex flex-col gap-2">
               <label htmlFor="from" className="text-sm font-medium text-muted-foreground">
-                Период с
+                РџРµСЂРёРѕРґ СЃ
               </label>
               <Input id="from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="to" className="text-sm font-medium text-muted-foreground">
-                Период по
+                РџРµСЂРёРѕРґ РїРѕ
               </label>
               <Input id="to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="teacher" className="text-sm font-medium text-muted-foreground">
-                Преподаватель
+                РџСЂРµРїРѕРґР°РІР°С‚РµР»СЊ
               </label>
               <select
                 id="teacher"
                 value={teacherUserId}
                 onChange={(e) => setTeacherUserId(e.target.value)}
               >
-                <option value="">Все преподаватели</option>
+                <option value="">Р’СЃРµ РїСЂРµРїРѕРґР°РІР°С‚РµР»Рё</option>
                 {teachers.map((item) => (
                   <option key={item.id} value={item.user.id}>
                     {item.user.fullName}
@@ -238,7 +242,7 @@ export default function AnalyticsPage() {
             </div>
             <div className="flex flex-col justify-end">
               <Button onClick={load} disabled={loading}>
-                {loading ? "Загрузка..." : "Построить"}
+                {loading ? "Р—Р°РіСЂСѓР·РєР°..." : "РџРѕСЃС‚СЂРѕРёС‚СЊ"}
               </Button>
             </div>
           </div>
@@ -248,14 +252,14 @@ export default function AnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Свод по часам</CardTitle>
+          <CardTitle>РЎРІРѕРґ РїРѕ С‡Р°СЃР°Рј</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="table-modern">
               <tbody>
                 <tr>
-                  <th className="font-semibold">Запланировано событий</th>
+                  <th className="font-semibold">Р—Р°РїР»Р°РЅРёСЂРѕРІР°РЅРѕ СЃРѕР±С‹С‚РёР№</th>
                   <td className="text-right font-bold">
                     <button type="button" className="text-primary hover:underline" onClick={() => setMetricModal("planned_count")}>
                       {summary.planned.length}
@@ -263,7 +267,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Состоялось событий</th>
+                  <th className="font-semibold">РЎРѕСЃС‚РѕСЏР»РѕСЃСЊ СЃРѕР±С‹С‚РёР№</th>
                   <td className="text-right font-bold text-green-600">
                     <button type="button" className="text-green-600 hover:underline" onClick={() => setMetricModal("completed_count")}>
                       {summary.completed.length}
@@ -271,7 +275,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Не состоялось событий</th>
+                  <th className="font-semibold">РќРµ СЃРѕСЃС‚РѕСЏР»РѕСЃСЊ СЃРѕР±С‹С‚РёР№</th>
                   <td className="text-right font-bold text-red-600">
                     <button type="button" className="text-red-600 hover:underline" onClick={() => setMetricModal("canceled_count")}>
                       {summary.canceled.length}
@@ -279,7 +283,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Часы план</th>
+                  <th className="font-semibold">Р§Р°СЃС‹ РїР»Р°РЅ</th>
                   <td className="text-right font-bold">
                     <button type="button" className="hover:underline" onClick={() => setMetricModal("planned_hours")}>
                       {summary.plannedHours}
@@ -287,7 +291,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Часы факт</th>
+                  <th className="font-semibold">Р§Р°СЃС‹ С„Р°РєС‚</th>
                   <td className="text-right font-bold">
                     <button type="button" className="hover:underline" onClick={() => setMetricModal("factual_hours")}>
                       {summary.factualHours}
@@ -295,7 +299,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Часы к оплате</th>
+                  <th className="font-semibold">Р§Р°СЃС‹ Рє РѕРїР»Р°С‚Рµ</th>
                   <td className="text-right font-bold text-primary">
                     <button type="button" className="text-primary hover:underline" onClick={() => setMetricModal("billable_hours")}>
                       {summary.billableHours}
@@ -303,7 +307,7 @@ export default function AnalyticsPage() {
                   </td>
                 </tr>
                 <tr>
-                  <th className="font-semibold">Доходимость</th>
+                  <th className="font-semibold">Р”РѕС…РѕРґРёРјРѕСЃС‚СЊ</th>
                   <td className="text-right font-bold text-primary">
                     <button type="button" className="text-primary hover:underline" onClick={() => setMetricModal("attendance_rate")}>
                       {summary.attendanceRate}%
@@ -318,8 +322,8 @@ export default function AnalyticsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Диаграмма по дням</CardTitle>
-          <CardDescription>Плановые часы, часы к оплате и число отмен по каждому дню</CardDescription>
+          <CardTitle>Р”РёР°РіСЂР°РјРјР° РїРѕ РґРЅСЏРј</CardTitle>
+          <CardDescription>РџР»Р°РЅРѕРІС‹Рµ С‡Р°СЃС‹, С‡Р°СЃС‹ Рє РѕРїР»Р°С‚Рµ Рё С‡РёСЃР»Рѕ РѕС‚РјРµРЅ РїРѕ РєР°Р¶РґРѕРјСѓ РґРЅСЋ</CardDescription>
         </CardHeader>
         <CardContent>
           {dailyChart.length ? (
@@ -344,33 +348,33 @@ export default function AnalyticsPage() {
                       </div>
                     </div>
                     <div className="text-right text-xs text-muted-foreground">
-                      {row.canceledCount ? `Отмен: ${row.canceledCount}` : "-"}
+                      {row.canceledCount ? `РћС‚РјРµРЅ: ${row.canceledCount}` : "-"}
                     </div>
                   </div>
                 );
               })}
               <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded bg-blue-500" />Часы план</span>
-                <span className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded bg-emerald-500" />Часы к оплате</span>
+                <span className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded bg-blue-500" />Р§Р°СЃС‹ РїР»Р°РЅ</span>
+                <span className="inline-flex items-center gap-2"><span className="h-2 w-4 rounded bg-emerald-500" />Р§Р°СЃС‹ Рє РѕРїР»Р°С‚Рµ</span>
               </div>
             </div>
           ) : (
-            <p className="empty-state">Нет данных за выбранный период.</p>
+            <p className="empty-state">РќРµС‚ РґР°РЅРЅС‹С… Р·Р° РІС‹Р±СЂР°РЅРЅС‹Р№ РїРµСЂРёРѕРґ.</p>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Причины несостоявшихся</CardTitle>
+          <CardTitle>РџСЂРёС‡РёРЅС‹ РЅРµСЃРѕСЃС‚РѕСЏРІС€РёС…СЃСЏ</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="table-modern">
               <thead>
                 <tr>
-                  <th>Причина</th>
-                  <th className="text-right">Количество</th>
+                  <th>РџСЂРёС‡РёРЅР°</th>
+                  <th className="text-right">РљРѕР»РёС‡РµСЃС‚РІРѕ</th>
                 </tr>
               </thead>
               <tbody>
@@ -383,7 +387,7 @@ export default function AnalyticsPage() {
                 {!cancelReasons.length ? (
                   <tr>
                     <td colSpan={2} className="empty-state">
-                      Нет данных.
+                      РќРµС‚ РґР°РЅРЅС‹С….
                     </td>
                   </tr>
                 ) : null}
@@ -399,7 +403,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center justify-between">
               <CardTitle>{metricTitle}</CardTitle>
               <Button type="button" variant="secondary" onClick={() => setMetricModal(null)}>
-                Закрыть
+                Р—Р°РєСЂС‹С‚СЊ
               </Button>
             </div>
           </CardHeader>
@@ -408,12 +412,12 @@ export default function AnalyticsPage() {
               <table className="table-modern">
                 <thead>
                   <tr>
-                    <th>Дата</th>
-                    <th>Событие</th>
-                    <th>Преподаватели</th>
-                    <th>Студенты</th>
-                    <th>Статус</th>
-                    <th>Причина</th>
+                    <th>Р”Р°С‚Р°</th>
+                    <th>РЎРѕР±С‹С‚РёРµ</th>
+                    <th>РџСЂРµРїРѕРґР°РІР°С‚РµР»Рё</th>
+                    <th>РЎС‚СѓРґРµРЅС‚С‹</th>
+                    <th>РЎС‚Р°С‚СѓСЃ</th>
+                    <th>РџСЂРёС‡РёРЅР°</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -438,7 +442,7 @@ export default function AnalyticsPage() {
                   {!metricEvents.length ? (
                     <tr>
                       <td colSpan={6} className="empty-state">
-                        Нет данных.
+                        РќРµС‚ РґР°РЅРЅС‹С….
                       </td>
                     </tr>
                   ) : null}
@@ -456,19 +460,19 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>{activeEvent.title}</CardTitle>
                 <Button type="button" variant="secondary" onClick={() => setActiveEvent(null)}>
-                  Закрыть
+                  Р—Р°РєСЂС‹С‚СЊ
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <p><strong>Статус:</strong> {statusLabel(activeEvent.status)}</p>
-              <p><strong>Дата:</strong> {new Date(activeEvent.plannedStartAt).toLocaleString("ru-RU")}</p>
-              <p><strong>Предмет:</strong> {activeEvent.subject || "-"}</p>
-              <p><strong>Часы план:</strong> {activeEvent.plannedHours}</p>
-              <p><strong>Часы к оплате:</strong> {activeEvent.billableHours}</p>
-              <p><strong>Преподаватели:</strong> {getTeacherNames(activeEvent) || "-"}</p>
-              <p><strong>Студенты:</strong> {getStudentNames(activeEvent) || "-"}</p>
-              <p><strong>Причина отмены:</strong> {eventReason(activeEvent)}</p>
+              <p><strong>РЎС‚Р°С‚СѓСЃ:</strong> {statusLabel(activeEvent.status)}</p>
+              <p><strong>Р”Р°С‚Р°:</strong> {new Date(activeEvent.plannedStartAt).toLocaleString("ru-RU")}</p>
+              <p><strong>РџСЂРµРґРјРµС‚:</strong> {activeEvent.subject || "-"}</p>
+              <p><strong>Р§Р°СЃС‹ РїР»Р°РЅ:</strong> {activeEvent.plannedHours}</p>
+              <p><strong>Р§Р°СЃС‹ Рє РѕРїР»Р°С‚Рµ:</strong> {payableHours(activeEvent)}</p>
+              <p><strong>РџСЂРµРїРѕРґР°РІР°С‚РµР»Рё:</strong> {getTeacherNames(activeEvent) || "-"}</p>
+              <p><strong>РЎС‚СѓРґРµРЅС‚С‹:</strong> {getStudentNames(activeEvent) || "-"}</p>
+              <p><strong>РџСЂРёС‡РёРЅР° РѕС‚РјРµРЅС‹:</strong> {eventReason(activeEvent)}</p>
             </CardContent>
           </Card>
         ) : null}
@@ -476,3 +480,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
