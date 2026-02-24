@@ -27,7 +27,10 @@ export function ThemeToggle() {
 
   return (
     <button type="button" className="secondary" onClick={toggleTheme}>
-      {theme === "light" ? "Темная тема" : "Светлая тема"}
+      <span className="md:hidden">Тема</span>
+      <span className="hidden md:inline">
+        {theme === "light" ? "Темная тема" : "Светлая тема"}
+      </span>
     </button>
   );
 }

@@ -125,12 +125,12 @@
 @layer components {
   /* Container with wider padding */
   .container-custom {
-    @apply w-full max-w-7xl mx-auto px-6 py-8;
+    @apply mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-8;
   }
 
   /* Modern Card */
   .card-modern {
-    @apply bg-card text-card-foreground rounded-2xl border-2 border-border shadow-lg shadow-black/5 p-8;
+    @apply rounded-2xl border-2 border-border bg-card p-5 text-card-foreground shadow-lg shadow-black/5 md:p-8;
   }
 
   /* Top Navigation Bar */
@@ -175,11 +175,11 @@
   }
 
   .table-modern th {
-    @apply px-6 py-4 text-left text-sm font-semibold text-muted-foreground;
+    @apply px-3 py-3 text-left text-xs font-semibold text-muted-foreground md:px-6 md:py-4 md:text-sm;
   }
 
   .table-modern td {
-    @apply px-6 py-4 text-sm border-b border-border/50;
+    @apply border-b border-border/50 px-3 py-3 text-xs md:px-6 md:py-4 md:text-sm;
   }
 
   .table-modern tbody tr {
@@ -237,7 +237,7 @@
 
   /* Compatibility for legacy pages */
   .card {
-    @apply rounded-2xl border-2 border-border bg-card text-card-foreground p-8 shadow-lg shadow-black/5;
+    @apply rounded-2xl border-2 border-border bg-card p-5 text-card-foreground shadow-lg shadow-black/5 md:p-8;
   }
 
   .secondary {
@@ -294,5 +294,41 @@
 
   .p-modern-lg {
     @apply p-12;
+  }
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    min-height: 42px;
+  }
+
+  button:not([class]),
+  .secondary,
+  .btn {
+    min-height: 40px;
+  }
+
+  .calendar-month-cell {
+    min-height: 120px;
+  }
+
+  .icon-switch {
+    gap: 8px;
+  }
+
+  .icon-switch > * {
+    flex: 1 1 auto;
+  }
+
+  .table-modern th,
+  .table-modern td {
+    white-space: nowrap;
   }
 }

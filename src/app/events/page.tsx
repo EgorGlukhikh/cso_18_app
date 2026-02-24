@@ -262,6 +262,7 @@ function isAdministrativeType(type: ActivityType) {
 
 export default function EventsPage() {
   const today = useMemo(() => new Date(), []);
+  const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [scope, setScope] = useState<ScopeMode>("month");
   const [dateFilter, setDateFilter] = useState<DateFilter>("current_month");
@@ -375,6 +376,21 @@ export default function EventsPage() {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const apply = () => setIsMobile(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    setScope("day");
+    setViewMode("list");
+    setDateFilter("day");
+  }, [isMobile]);
 
   useEffect(() => {
     loadEvents();
@@ -689,42 +705,60 @@ export default function EventsPage() {
     openCreateModal(day, snapTimeFromOffset(y));
   }
 
+  function shiftDay(offset: number) {
+    const base = new Date(`${dayFilterDate}T00:00:00`);
+    setDayFilterDate(toDayString(addDays(base, offset)));
+    setDateFilter("day");
+    setScope("day");
+  }
+
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
   const hourlyGuideBorder = "1px solid hsl(var(--foreground) / 0.16)";
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+    <div className="space-y-4 md:space-y-6">
+      <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
         <h1 style={{ marginTop: 0, marginBottom: 10 }}>Расписание</h1>
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
           <div className="icon-switch">
             <button type="button" className={scope === "day" ? "" : "secondary"} onClick={() => setScope("day")}>День</button>
-            <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>Неделя</button>
-            <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>Месяц</button>
+            {!isMobile ? (
+              <>
+                <button type="button" className={scope === "week" ? "" : "secondary"} onClick={() => setScope("week")}>Неделя</button>
+                <button type="button" className={scope === "month" ? "" : "secondary"} onClick={() => setScope("month")}>Месяц</button>
+              </>
+            ) : null}
           </div>
 
           <div className="icon-switch">
-            <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")} title="Календарь">🗓️</button>
-            <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")} title="Список">📋</button>
+            <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")} title="Календарь">Календарь</button>
+            <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")} title="Список">Список</button>
           </div>
         </div>
 
         <div className="icon-switch" style={{ marginBottom: 10 }}>
-          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} style={{ maxWidth: 220 }}>
+          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value as DateFilter)} style={{ maxWidth: isMobile ? 999 : 220 }}>
             <option value="current_month">Текущий месяц</option>
             <option value="current_week">Текущая неделя</option>
             <option value="day">День</option>
             <option value="custom">Свой период</option>
           </select>
-          {dateFilter === "day" ? <input type="date" value={dayFilterDate} onChange={(e) => setDayFilterDate(e.target.value)} style={{ maxWidth: 180 }} /> : null}
+          {dateFilter === "day" ? (
+            <div className="flex w-full flex-wrap items-center gap-2">
+              <button type="button" className="secondary" onClick={() => shiftDay(-1)}>←</button>
+              <input type="date" value={dayFilterDate} onChange={(e) => setDayFilterDate(e.target.value)} style={{ maxWidth: 220 }} />
+              <button type="button" className="secondary" onClick={() => setDayFilterDate(todayKey)}>Сегодня</button>
+              <button type="button" className="secondary" onClick={() => shiftDay(1)}>→</button>
+            </div>
+          ) : null}
           {dateFilter === "custom" ? (
             <>
-              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ maxWidth: 180 }} />
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ maxWidth: 180 }} />
+              <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} style={{ maxWidth: isMobile ? 999 : 180 }} />
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={{ maxWidth: isMobile ? 999 : 180 }} />
             </>
           ) : null}
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: 220 }}>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ maxWidth: isMobile ? 999 : 220 }}>
             <option value="">Все статусы</option>
             <option value="PLANNED">Запланировано</option>
             <option value="COMPLETED">Состоялось</option>
@@ -744,7 +778,7 @@ export default function EventsPage() {
       </section>
 
       {viewMode === "calendar" && scope === "day" ? (
-        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+        <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
           <div style={{ marginTop: -4, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <DayCountersLegend counters={currentDayCounters} />
@@ -806,8 +840,8 @@ export default function EventsPage() {
         </section>
       ) : null}
 
-      {viewMode === "calendar" && scope === "week" ? (
-        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+      {!isMobile && viewMode === "calendar" && scope === "week" ? (
+        <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
           <h2 style={{ marginTop: 0 }}>Календарь недели</h2>
           <div style={{ overflowX: "auto" }}>
             <div style={{ minWidth: 1040 }}>
@@ -937,8 +971,8 @@ export default function EventsPage() {
         </section>
       ) : null}
 
-      {viewMode === "calendar" && scope === "month" ? (
-        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+      {!isMobile && viewMode === "calendar" && scope === "month" ? (
+        <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
           <h2 style={{ marginTop: 0 }}>Календарь месяца</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => <strong key={d} style={{ textAlign: "center", color: "var(--muted)" }}>{d}</strong>)}
@@ -988,7 +1022,7 @@ export default function EventsPage() {
       ) : null}
 
       {viewMode === "list" ? (
-        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+        <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
           <h2 style={{ marginTop: 0 }}>Список по дням</h2>
           <div className="space-y-6">
             {rangeDays.map((dayDate) => {
