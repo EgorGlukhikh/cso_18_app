@@ -915,7 +915,7 @@ export default function EventsPage() {
                 </select>
               </label>
               <label>
-                Преподаватель
+                {isAdministrativeType(activityType) ? "Участники (админы / педагоги)" : "Преподаватель"}
                 {activityType === "GROUP_LESSON" || isAdministrativeType(activityType) ? (
                   <div
                     style={{
@@ -933,13 +933,31 @@ export default function EventsPage() {
                       {teachers.map((item) => {
                         const checked = teacherIds.includes(item.user.id);
                         return (
-                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                          <label
+                            key={item.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              cursor: "pointer",
+                              border: checked ? "2px solid hsl(var(--primary))" : "2px solid hsl(var(--border))",
+                              background: checked ? "hsl(var(--primary) / 0.08)" : "transparent",
+                              borderRadius: 10,
+                              padding: "8px 10px"
+                            }}
+                          >
                             <input
                               type="checkbox"
                               checked={checked}
                               onChange={() => setTeacherIds((prev) => toggleId(prev, item.user.id))}
+                              style={{ width: 18, height: 18 }}
                             />
                             <span>{item.user.fullName}</span>
+                            {checked ? (
+                              <span style={{ marginLeft: "auto", fontSize: 12, color: "hsl(var(--primary))", fontWeight: 600 }}>
+                                Выбран
+                              </span>
+                            ) : null}
                           </label>
                         );
                       })}
@@ -975,13 +993,31 @@ export default function EventsPage() {
                         {students.map((item) => {
                           const checked = studentIds.includes(item.user.id);
                           return (
-                            <label key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                            <label
+                              key={item.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                cursor: "pointer",
+                                border: checked ? "2px solid hsl(var(--primary))" : "2px solid hsl(var(--border))",
+                                background: checked ? "hsl(var(--primary) / 0.08)" : "transparent",
+                                borderRadius: 10,
+                                padding: "8px 10px"
+                              }}
+                            >
                               <input
                                 type="checkbox"
                                 checked={checked}
                                 onChange={() => setStudentIds((prev) => toggleId(prev, item.user.id))}
+                                style={{ width: 18, height: 18 }}
                               />
                               <span>{item.user.fullName}</span>
+                              {checked ? (
+                                <span style={{ marginLeft: "auto", fontSize: 12, color: "hsl(var(--primary))", fontWeight: 600 }}>
+                                  Выбран
+                                </span>
+                              ) : null}
                             </label>
                           );
                         })}
