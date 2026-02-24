@@ -154,8 +154,33 @@ function formatHours(value: number) {
   return normalized.toFixed(1).replace(".", ",");
 }
 
-function dayCounterText(counters: DayCounters) {
-  return `Инд ${formatHours(counters.individualHours)}ч • Гр ${formatHours(counters.groupHours)}ч • Адм ${formatHours(counters.administrativeHours)}ч`;
+function DayCountersLegend({ counters, compact = false }: { counters: DayCounters; compact?: boolean }) {
+  const fontSize = compact ? 11 : 13;
+  const dotSize = compact ? 7 : 8;
+  const baseTextStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize,
+    color: "var(--muted)"
+  } as const;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: compact ? 8 : 12 }}>
+      <span style={baseTextStyle}>
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: "hsl(var(--primary))", display: "inline-block" }} />
+        {formatHours(counters.individualHours)}ч
+      </span>
+      <span style={baseTextStyle}>
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: "hsl(142 71% 45%)", display: "inline-block" }} />
+        {formatHours(counters.groupHours)}ч
+      </span>
+      <span style={baseTextStyle}>
+        <span style={{ width: dotSize, height: dotSize, borderRadius: 999, background: "hsl(38 92% 50%)", display: "inline-block" }} />
+        {formatHours(counters.administrativeHours)}ч
+      </span>
+    </div>
+  );
 }
 
 function colorForType(type: ActivityType) {
@@ -721,9 +746,12 @@ export default function EventsPage() {
       {viewMode === "calendar" && scope === "day" ? (
         <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
-          <p style={{ marginTop: -4, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
-            Счетчик дня: {dayCounterText(currentDayCounters)} • Всего {formatHours(currentDayCounters.totalHours)}ч ({currentDayCounters.totalEvents} событий)
-          </p>
+          <div style={{ marginTop: -4, marginBottom: 12, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <DayCountersLegend counters={currentDayCounters} />
+            <span style={{ color: "var(--muted)", fontSize: 13 }}>
+              Всего {formatHours(currentDayCounters.totalHours)}ч ({currentDayCounters.totalEvents} событий)
+            </span>
+          </div>
           <div
             style={{
               position: "relative",
@@ -810,8 +838,8 @@ export default function EventsPage() {
                       <span style={{ display: "block", fontWeight: 700 }}>
                         {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
                       </span>
-                      <span style={{ display: "block", marginTop: 2, fontSize: 11, opacity: 0.85, whiteSpace: "normal", lineHeight: 1.2 }}>
-                        {dayCounterText(counters)}
+                      <span style={{ display: "block", marginTop: 2, whiteSpace: "normal", lineHeight: 1.2 }}>
+                        <DayCountersLegend counters={counters} compact />
                       </span>
                       <span style={{ display: "block", marginTop: 2, fontSize: 11, opacity: 0.85 }}>
                         Всего {formatHours(counters.totalHours)}ч • {counters.totalEvents}
@@ -940,8 +968,8 @@ export default function EventsPage() {
                   <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
                     {day.getDate()}
                   </button>
-                  <div style={{ marginBottom: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.25 }}>
-                    <div>{dayCounterText(counters)}</div>
+                  <div style={{ marginBottom: 6, lineHeight: 1.25 }}>
+                    <DayCountersLegend counters={counters} compact />
                     <div>Всего {formatHours(counters.totalHours)}ч • {counters.totalEvents}</div>
                   </div>
                   {items.slice(0, 3).map((item) => {
@@ -979,9 +1007,12 @@ export default function EventsPage() {
                     <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
                     <button type="button" className="secondary" onClick={() => openCreateModal(day)}>Добавить</button>
                   </div>
-                  <p style={{ marginTop: -6, marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
-                    Счетчик дня: {dayCounterText(counters)} • Всего {formatHours(counters.totalHours)}ч ({counters.totalEvents} событий)
-                  </p>
+                  <div style={{ marginTop: -6, marginBottom: 10, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <DayCountersLegend counters={counters} />
+                    <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                      Всего {formatHours(counters.totalHours)}ч ({counters.totalEvents} событий)
+                    </span>
+                  </div>
                   {items.length ? (
                     <table className="table-modern">
                       <thead><tr><th>Время</th><th>Событие</th><th>Тип</th><th>Статус</th></tr></thead>
