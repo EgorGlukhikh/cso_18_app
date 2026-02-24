@@ -29,6 +29,14 @@ function normalizePhone(value: string) {
   return digits;
 }
 
+function normalizeWords(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]+/gu, " ")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+}
+
 function linkKeyboard() {
   return {
     keyboard: [
@@ -55,6 +63,48 @@ async function findParentByPhone(phoneNumber: string) {
   });
 
   return parents.find((item) => normalizePhone(item.user.phone ?? "") === normalized) ?? null;
+}
+
+async function findParentByNameTokens(tokens: string[]) {
+  if (!tokens.length) return null;
+
+  const parents = await db.parentProfile.findMany({
+    where: { user: { role: UserRole.PARENT, isActive: true } },
+    include: { user: true },
+    take: 1000
+  });
+
+  const minScore = Math.min(2, tokens.length);
+  let winner: (typeof parents)[number] | null = null;
+  let winnerScore = 0;
+  let hasTie = false;
+
+  for (const parent of parents) {
+    const fullNameTokens = normalizeWords(parent.user.fullName ?? "");
+    if (!fullNameTokens.length) continue;
+
+    const score = tokens.filter((token) =>
+      fullNameTokens.some((nameToken) =>
+        nameToken === token ||
+        nameToken.startsWith(token) ||
+        token.startsWith(nameToken)
+      )
+    ).length;
+
+    if (score < minScore) continue;
+    if (score > winnerScore) {
+      winner = parent;
+      winnerScore = score;
+      hasTie = false;
+      continue;
+    }
+    if (score === winnerScore) {
+      hasTie = true;
+    }
+  }
+
+  if (hasTie) return null;
+  return winner;
 }
 
 async function linkParentTelegram(parentId: string, chatId: string) {
@@ -120,13 +170,30 @@ export async function POST(request: NextRequest) {
     const lowerText = text.toLowerCase();
 
     if (message.contact?.phone_number) {
-      const parent = await findParentByPhone(message.contact.phone_number);
+      let parent = await findParentByPhone(message.contact.phone_number);
+      let reason = "parent_not_found_by_phone";
+
+      if (!parent) {
+        const nameTokens = normalizeWords(
+          [
+            message.from?.first_name ?? "",
+            message.from?.last_name ?? "",
+            message.contact.first_name ?? "",
+            message.from?.username ?? ""
+          ]
+            .join(" ")
+            .trim()
+        );
+        parent = await findParentByNameTokens(nameTokens);
+        if (parent) reason = "linked_by_name";
+      }
+
       if (!parent) {
         await sendTelegramMessage(
           chatId,
-          "Не нашел родителя с таким номером телефона. Напишите /link ваш_email или обратитесь к администратору."
+          "Не нашел родителя автоматически. Напишите /link ваш_email или обратитесь к администратору."
         );
-        return NextResponse.json({ ok: true, linked: false, reason: "parent_not_found_by_phone" });
+        return NextResponse.json({ ok: true, linked: false, reason });
       }
 
       await linkParentTelegram(parent.id, chatId);
@@ -134,7 +201,7 @@ export async function POST(request: NextRequest) {
         chatId,
         `Готово. Чат привязан к родителю ${parent.user.fullName}. Теперь уведомления о занятиях включены.`
       );
-      return NextResponse.json({ ok: true, linked: true, parentId: parent.id });
+      return NextResponse.json({ ok: true, linked: true, parentId: parent.id, reason });
     }
 
     if (lowerText === "/start" || lowerText === "связать" || lowerText === "/link") {
