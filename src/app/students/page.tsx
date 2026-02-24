@@ -74,6 +74,7 @@ async function fileToBase64(file: File) {
 
 export default function StudentsPage() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
   const [studentIdFromQuery, setStudentIdFromQuery] = useState<string | null>(null);
 
   const [items, setItems] = useState<StudentItem[]>([]);
@@ -171,6 +172,19 @@ export default function StudentsPage() {
     if (typeof window === "undefined") return;
     setStudentIdFromQuery(new URLSearchParams(window.location.search).get("studentId"));
   }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 900px)");
+    const apply = () => setIsMobile(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    setViewMode("list");
+  }, [isMobile]);
 
   useEffect(() => {
     if (!studentIdFromQuery) return;
@@ -346,8 +360,8 @@ export default function StudentsPage() {
   const todayKey = useMemo(() => toDayString(new Date()), []);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
+    <div className="space-y-4 md:space-y-6">
+      <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
         <h1 style={{ marginTop: 0 }}>Студенты</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={() => setAddOpen(true)}>Добавить</button>
@@ -355,8 +369,8 @@ export default function StudentsPage() {
         {error ? <p className="error">{error}</p> : null}
       </section>
 
-      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
-        <div className="overflow-x-auto">
+      <section className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8">
+        <div className="hidden overflow-x-auto md:block">
           <table className="table-modern">
             <thead><tr><th>ФИО</th><th>Телефон</th><th>Класс</th><th>Родители</th></tr></thead>
             <tbody>
@@ -371,11 +385,25 @@ export default function StudentsPage() {
             </tbody>
           </table>
         </div>
+        <div className="space-y-2 md:hidden">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => void openStudent(item)}
+              className="w-full rounded-xl border-2 border-border bg-background p-3 text-left"
+            >
+              <p className="text-sm font-semibold">{item.user.fullName}</p>
+              <p className="text-xs text-muted-foreground">Телефон: {item.user.phone || "-"}</p>
+              <p className="text-xs text-muted-foreground">Класс: {item.grade ?? "-"}</p>
+            </button>
+          ))}
+        </div>
       </section>
 
       {addOpen ? (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(760px, 95vw)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70, padding: 8 }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8" style={{ width: "min(760px, 98vw)", maxHeight: "92vh", overflow: "auto" }}>
             <h2 style={{ marginTop: 0 }}>Добавить студента</h2>
             <form className="grid cols-2" onSubmit={onSubmit}>
               <label>ФИО<input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></label>
@@ -393,8 +421,8 @@ export default function StudentsPage() {
       ) : null}
 
       {activeStudent ? (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(1120px, 96vw)", maxHeight: "92vh", overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70, padding: 8 }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-4 shadow-lg md:p-8" style={{ width: "min(1120px, 98vw)", maxHeight: "92vh", overflow: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ marginTop: 0 }}>{activeStudent.user.fullName}</h2>
               <button className="secondary" onClick={() => setActiveStudent(null)}>Закрыть</button>
@@ -412,29 +440,31 @@ export default function StudentsPage() {
             <div style={{ marginTop: 8 }}><button onClick={saveStudent}>Сохранить карточку</button></div>
 
             <h3 style={{ marginTop: 18 }}>Связка с родителями</h3>
-            <div className="space-y-6" style={{ gap: 8 }}>
+            <div className="space-y-2">
               {activeStudent.parentLinks.map((link) => (
-                <div key={link.id} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 8 }}>
+                <div key={link.id} className="rounded-xl border-2 border-border bg-background p-3">
                   {link.parent.user.fullName} ({link.relationship || "родитель"})
                 </div>
               ))}
             </div>
             <div className="icon-switch" style={{ marginTop: 8 }}>
-              <select value={linkParentId} onChange={(e) => setLinkParentId(e.target.value)} style={{ maxWidth: 300 }}>
+              <select value={linkParentId} onChange={(e) => setLinkParentId(e.target.value)} style={{ maxWidth: isMobile ? undefined : 300 }}>
                 <option value="">Выберите родителя</option>
                 {parents.map((parent) => <option key={parent.id} value={parent.id}>{parent.user.fullName}</option>)}
               </select>
-              <input value={linkRelationship} onChange={(e) => setLinkRelationship(e.target.value)} style={{ maxWidth: 220 }} />
+              <input value={linkRelationship} onChange={(e) => setLinkRelationship(e.target.value)} style={{ maxWidth: isMobile ? undefined : 220 }} />
               <button type="button" onClick={addParentLink}>Привязать</button>
             </div>
 
             <h3 style={{ marginTop: 18 }}>Расписание студента</h3>
             <div className="icon-switch" style={{ marginBottom: 8 }}>
-              <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>🗓️</button>
+              {!isMobile ? (
+                <button type="button" className={viewMode === "calendar" ? "" : "secondary"} onClick={() => setViewMode("calendar")}>🗓️</button>
+              ) : null}
               <button type="button" className={viewMode === "list" ? "" : "secondary"} onClick={() => setViewMode("list")}>📋</button>
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ maxWidth: 170 }} />
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ maxWidth: 170 }} />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: 200 }}>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ maxWidth: isMobile ? undefined : 170 }} />
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ maxWidth: isMobile ? undefined : 170 }} />
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ maxWidth: isMobile ? undefined : 200 }}>
                 <option value="">Все статусы</option>
                 <option value="PLANNED">Запланировано</option>
                 <option value="COMPLETED">Состоялось</option>
@@ -442,7 +472,7 @@ export default function StudentsPage() {
               </select>
             </div>
 
-            {viewMode === "calendar" ? (
+            {viewMode === "calendar" && !isMobile ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 8 }}>
                 {calendarDays.map((day) => {
                   const key = toDayString(day);
@@ -470,7 +500,7 @@ export default function StudentsPage() {
                 })}
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-3">
                 {visibleSchedule.map((item) => {
                   const c = colorByCategory(item.category);
                   return <div key={item.id} style={{ border: `1px solid ${c.border}`, background: c.bg, borderRadius: 8, padding: "8px 10px" }}>{new Date(item.plannedStartAt).toLocaleString("ru-RU")} - {item.title}</div>;

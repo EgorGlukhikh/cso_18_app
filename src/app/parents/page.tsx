@@ -187,17 +187,17 @@ export default function ParentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Родители</CardTitle>
-            <Button onClick={() => setAddOpen(true)}>Добавить</Button>
+            <Button onClick={() => setAddOpen(true)} className="w-full sm:w-auto">Добавить</Button>
           </div>
         </CardHeader>
         <CardContent>
           {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="table-modern">
               <thead>
                 <tr>
@@ -219,6 +219,22 @@ export default function ParentsPage() {
               </tbody>
             </table>
           </div>
+          <div className="space-y-2 md:hidden">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => void openParent(item)}
+                className="w-full rounded-xl border-2 border-border bg-background p-3 text-left"
+              >
+                <p className="text-sm font-semibold">{item.user.fullName}</p>
+                <p className="text-xs text-muted-foreground">{item.user.phone || "-"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {item.telegramEnabled ? "Telegram подключен" : "Telegram не подключен"}
+                </p>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -227,7 +243,7 @@ export default function ParentsPage() {
           <CardHeader>
             <CardTitle>Добавить родителя</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="max-h-[80vh] overflow-y-auto">
             <form onSubmit={onSubmit} className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
@@ -255,9 +271,9 @@ export default function ParentsPage() {
                   <textarea rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} />
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Button type="submit">Сохранить</Button>
-                <Button type="button" variant="secondary" onClick={() => setAddOpen(false)}>Закрыть</Button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button type="submit" className="w-full sm:w-auto">Сохранить</Button>
+                <Button type="button" variant="secondary" onClick={() => setAddOpen(false)} className="w-full sm:w-auto">Закрыть</Button>
               </div>
             </form>
           </CardContent>
@@ -268,12 +284,12 @@ export default function ParentsPage() {
         {activeParent && (
           <Card className="border-0 shadow-none">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>{activeParent.user.fullName}</CardTitle>
-                <Button variant="secondary" onClick={() => setActiveParent(null)}>Закрыть</Button>
+                <Button variant="secondary" onClick={() => setActiveParent(null)} className="w-full sm:w-auto">Закрыть</Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="max-h-[80vh] space-y-6 overflow-y-auto">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Телефон</label>
@@ -303,13 +319,14 @@ export default function ParentsPage() {
               <p className="text-sm text-muted-foreground">
                 Статус Telegram: {activeParent.telegramChatId ? "Привязан" : "Не привязан"}
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={saveParent}>Сохранить</Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button onClick={saveParent} className="w-full sm:w-auto">Сохранить</Button>
                 <Button
                   type="button"
                   variant="destructive"
                   onClick={unlinkParentTelegram}
                   disabled={!activeParent.telegramChatId}
+                  className="w-full sm:w-auto"
                 >
                   Отвязать Telegram
                 </Button>
@@ -332,7 +349,7 @@ export default function ParentsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Select value={linkStudentId} onChange={(e) => setLinkStudentId(e.target.value)} className="min-w-[200px] flex-1">
                   <option value="">Выберите ребенка</option>
                   {students.map((student) => (
@@ -342,7 +359,7 @@ export default function ParentsPage() {
                   ))}
                 </Select>
                 <Input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Отношение" className="min-w-[150px] flex-1" />
-                <Button type="button" onClick={addStudentLink}>Привязать ребенка</Button>
+                <Button type="button" onClick={addStudentLink} className="w-full sm:w-auto">Привязать ребенка</Button>
               </div>
             </CardContent>
           </Card>
