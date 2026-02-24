@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const status = searchParams.get("status") as EventStatus | null;
+    const teacherUserId = searchParams.get("teacherUserId");
 
     const where = {
       ...(from || to
@@ -23,7 +24,17 @@ export async function GET(request: NextRequest) {
             }
           }
         : {}),
-      ...(status ? { status } : {})
+      ...(status ? { status } : {}),
+      ...(teacherUserId
+        ? {
+            participants: {
+              some: {
+                participantRole: "TEACHER" as const,
+                userId: teacherUserId
+              }
+            }
+          }
+        : {})
     };
 
     const items = await db.event.findMany({

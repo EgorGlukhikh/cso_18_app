@@ -53,6 +53,36 @@
     --info-foreground: 0 0% 100%;
   }
 
+  [data-theme="dark"] {
+    --background: 222 22% 10%;
+    --foreground: 210 20% 96%;
+
+    --card: 223 20% 13%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 223 20% 13%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 213 90% 60%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 223 16% 20%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 223 16% 20%;
+    --muted-foreground: 216 15% 70%;
+
+    --accent: 188 70% 46%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 78% 57%;
+    --destructive-foreground: 210 20% 96%;
+
+    --border: 223 15% 28%;
+    --input: 223 15% 28%;
+    --ring: 213 90% 60%;
+  }
+
   * {
     @apply border-border;
   }
