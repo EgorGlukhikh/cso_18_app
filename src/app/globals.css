@@ -62,6 +62,34 @@
     font-family: Inter, "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    @apply w-full rounded-xl border-2 border-input bg-background px-3 py-2 text-sm text-foreground transition-all;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  button:not([class]) {
+    @apply inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all;
+    @apply hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  table {
+    @apply w-full border-collapse;
+  }
+
+  thead {
+    @apply border-b-2 border-border;
+  }
+
+  th {
+    @apply px-4 py-3 text-left text-sm font-semibold text-muted-foreground;
+  }
+
+  td {
+    @apply border-b border-border/50 px-4 py-3 text-sm;
+  }
 }
 
 @layer components {
@@ -175,6 +203,48 @@
   /* Loading spinner */
   .spinner {
     @apply animate-spin rounded-full border-4 border-muted border-t-primary h-8 w-8;
+  }
+
+  /* Compatibility for legacy pages */
+  .card {
+    @apply rounded-2xl border-2 border-border bg-card text-card-foreground p-8 shadow-lg shadow-black/5;
+  }
+
+  .secondary {
+    @apply inline-flex items-center justify-center rounded-xl border-2 border-border bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground transition-all;
+    @apply hover:bg-secondary/80;
+  }
+
+  .error {
+    @apply text-sm font-medium text-destructive;
+  }
+
+  .icon-switch {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .cols-2 {
+    @apply grid-cols-1 md:grid-cols-2 gap-6;
+  }
+
+  .event-chip {
+    @apply inline-flex items-center rounded-lg border px-2 py-1 text-xs font-semibold transition-colors;
+  }
+
+  .event-chip--individual {
+    @apply border-blue-200 bg-blue-50 text-blue-800;
+  }
+
+  .event-chip--group {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+  }
+
+  .event-chip--administrative {
+    @apply border-amber-200 bg-amber-50 text-amber-800;
+  }
+
+  .calendar-month-cell {
+    @apply min-h-[140px];
   }
 }
 

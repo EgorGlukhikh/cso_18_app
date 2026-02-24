@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type SubjectItem = {
   id: string;
@@ -41,6 +44,7 @@ export default function SubjectsPage() {
         sortOrder: Number(sortOrder || "100")
       })
     });
+
     if (!response.ok) {
       const payload = (await response.json()) as { error?: string };
       setError(payload.error ?? "Не удалось добавить предмет");
@@ -67,75 +71,85 @@ export default function SubjectsPage() {
   }
 
   return (
-    <div className="grid">
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>Справочник предметов</h1>
-        <form className="grid cols-2" onSubmit={createSubject}>
-          <label>
-            Название предмета
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label>
-            Порядок
-            <input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} min={0} max={1000} />
-          </label>
-          <div>
-            <button type="submit">Добавить предмет</button>
-          </div>
-        </form>
-        {error ? <p className="error">{error}</p> : null}
-      </section>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Справочник предметов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="grid grid-cols-1 gap-6 md:grid-cols-2" onSubmit={createSubject}>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Название предмета</span>
+              <Input value={name} onChange={(e) => setName(e.target.value)} required />
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium">Порядок</span>
+              <Input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} min={0} max={1000} />
+            </label>
+            <div>
+              <Button type="submit">Добавить предмет</Button>
+            </div>
+          </form>
+          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Предмет</th>
-              <th>Порядок</th>
-              <th>Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <input
-                    value={item.name}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setItems((prev) => prev.map((s) => (s.id === item.id ? { ...s, name: value } : s)));
-                    }}
-                    onBlur={() => void updateSubject(item, { name: item.name })}
-                  />
-                </td>
-                <td>
-                  <input
-                    type="number"
-                    value={item.sortOrder}
-                    onChange={(e) => {
-                      const value = Number(e.target.value || "0");
-                      setItems((prev) => prev.map((s) => (s.id === item.id ? { ...s, sortOrder: value } : s)));
-                    }}
-                    onBlur={() => void updateSubject(item, { sortOrder: item.sortOrder })}
-                    min={0}
-                    max={1000}
-                  />
-                </td>
-                <td>
-                  <button type="button" className="secondary" onClick={() => void updateSubject(item, { isActive: !item.isActive })}>
-                    {item.isActive ? "Активен" : "Отключен"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!items.length ? (
-              <tr>
-                <td colSpan={3}>Предметы еще не добавлены</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </section>
+      <Card>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="table-modern">
+              <thead>
+                <tr>
+                  <th>Предмет</th>
+                  <th>Порядок</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <Input
+                        value={item.name}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setItems((prev) => prev.map((s) => (s.id === item.id ? { ...s, name: value } : s)));
+                        }}
+                        onBlur={() => void updateSubject(item, { name: item.name })}
+                      />
+                    </td>
+                    <td>
+                      <Input
+                        type="number"
+                        value={item.sortOrder}
+                        onChange={(e) => {
+                          const value = Number(e.target.value || "0");
+                          setItems((prev) => prev.map((s) => (s.id === item.id ? { ...s, sortOrder: value } : s)));
+                        }}
+                        onBlur={() => void updateSubject(item, { sortOrder: item.sortOrder })}
+                        min={0}
+                        max={1000}
+                      />
+                    </td>
+                    <td>
+                      <Button type="button" variant="secondary" onClick={() => void updateSubject(item, { isActive: !item.isActive })}>
+                        {item.isActive ? "Активен" : "Отключен"}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {!items.length ? (
+                  <tr>
+                    <td colSpan={3} className="empty-state">
+                      Предметы еще не добавлены
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

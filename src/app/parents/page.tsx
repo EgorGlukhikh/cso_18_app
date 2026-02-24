@@ -162,13 +162,13 @@ export default function ParentsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <CardTitle>Родители</CardTitle>
             <Button onClick={() => setAddOpen(true)}>Добавить</Button>
           </div>
         </CardHeader>
         <CardContent>
-          {error ? <p className="text-sm text-destructive mb-4">{error}</p> : null}
+          {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
           <div className="overflow-x-auto">
             <table className="table-modern">
               <thead>
@@ -181,7 +181,7 @@ export default function ParentsPage() {
               </thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} onClick={() => void openParent(item)} className="cursor-pointer">
+                  <tr key={item.id} className="cursor-pointer" onClick={() => void openParent(item)}>
                     <td className="font-medium">{item.user.fullName}</td>
                     <td>{item.user.phone || "-"}</td>
                     <td>{item.telegramEnabled ? "Подключен" : "Не подключен"}</td>
@@ -201,7 +201,7 @@ export default function ParentsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">ФИО</label>
                   <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
@@ -218,13 +218,13 @@ export default function ParentsPage() {
                   <label className="text-sm font-medium">Час напоминания</label>
                   <Input type="number" min={0} max={23} value={morningReminderHour} onChange={(e) => setMorningReminderHour(e.target.value)} />
                 </div>
-                <div className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2">
                   <input type="checkbox" checked={telegramEnabled} onChange={(e) => setTelegramEnabled(e.target.checked)} className="h-4 w-4" />
-                  <label className="text-sm font-medium">Telegram включен</label>
-                </div>
+                  <span className="text-sm font-medium">Telegram включен</span>
+                </label>
                 <div className="col-span-full space-y-2">
                   <label className="text-sm font-medium">Комментарий</label>
-                  <textarea rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} className="input-modern" />
+                  <textarea rows={3} value={newComment} onChange={(e) => setNewComment(e.target.value)} />
                 </div>
               </div>
               <div className="flex gap-3">
@@ -240,13 +240,13 @@ export default function ParentsPage() {
         {activeParent && (
           <Card className="border-0 shadow-none">
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <CardTitle>{activeParent.user.fullName}</CardTitle>
                 <Button variant="secondary" onClick={() => setActiveParent(null)}>Закрыть</Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Телефон</label>
                   <Input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
@@ -255,13 +255,13 @@ export default function ParentsPage() {
                   <label className="text-sm font-medium">Час напоминания</label>
                   <Input type="number" min={0} max={23} value={parentReminderHour} onChange={(e) => setParentReminderHour(e.target.value)} />
                 </div>
-                <div className="flex items-center space-x-2">
+                <label className="flex items-center space-x-2">
                   <input type="checkbox" checked={parentTgEnabled} onChange={(e) => setParentTgEnabled(e.target.checked)} className="h-4 w-4" />
-                  <label className="text-sm font-medium">Telegram включен</label>
-                </div>
+                  <span className="text-sm font-medium">Telegram включен</span>
+                </label>
                 <div className="col-span-full space-y-2">
                   <label className="text-sm font-medium">Комментарий</label>
-                  <textarea rows={3} value={parentComment} onChange={(e) => setParentComment(e.target.value)} className="input-modern" />
+                  <textarea rows={3} value={parentComment} onChange={(e) => setParentComment(e.target.value)} />
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -270,24 +270,29 @@ export default function ParentsPage() {
               <Button onClick={saveParent}>Сохранить</Button>
 
               <div>
-                <h3 className="text-lg font-semibold mb-4">Привязанные дети</h3>
+                <h3 className="mb-4 text-lg font-semibold">Привязанные дети</h3>
                 <div className="space-y-2">
                   {activeParent.studentLinks.map((link) => (
                     <Card key={link.id} className="p-4">
                       <p className="text-sm">
-                        {link.student.user.fullName} <span className="text-muted-foreground">({link.relationship || "ребенок"})</span>
+                        {link.student.user.fullName}{" "}
+                        <span className="text-muted-foreground">({link.relationship || "ребенок"})</span>
                       </p>
                     </Card>
                   ))}
                 </div>
               </div>
 
-              <div className="flex gap-3 flex-wrap">
-                <Select value={linkStudentId} onChange={(e) => setLinkStudentId(e.target.value)} className="flex-1 min-w-[200px]">
+              <div className="flex flex-wrap gap-3">
+                <Select value={linkStudentId} onChange={(e) => setLinkStudentId(e.target.value)} className="min-w-[200px] flex-1">
                   <option value="">Выберите ребенка</option>
-                  {students.map((student) => <option key={student.id} value={student.id}>{student.user.fullName}</option>)}
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.user.fullName}
+                    </option>
+                  ))}
                 </Select>
-                <Input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Отношение" className="flex-1 min-w-[150px]" />
+                <Input value={relationship} onChange={(e) => setRelationship(e.target.value)} placeholder="Отношение" className="min-w-[150px] flex-1" />
                 <Button type="button" onClick={addStudentLink}>Привязать ребенка</Button>
               </div>
             </CardContent>

@@ -671,7 +671,11 @@ export default function EventsPage() {
               const key = toDayString(day);
               const items = eventsByDay.get(key) ?? [];
               return (
-                <div key={key} className="card calendar-month-cell" style={{ margin: 0, padding: 8, minHeight: 140 }}>
+                <div
+                  key={key}
+                  className="calendar-month-cell rounded-2xl border-2 border-border bg-card p-8 shadow-lg"
+                  style={{ margin: 0, padding: 8, minHeight: 140 }}
+                >
                   <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
                     {day.getDate()}
                   </button>
@@ -704,7 +708,7 @@ export default function EventsPage() {
                     <button type="button" className="secondary" onClick={() => openCreateModal(day)}>Добавить</button>
                   </div>
                   {items.length ? (
-                    <table>
+                    <table className="table-modern">
                       <thead><tr><th>Время</th><th>Событие</th><th>Тип</th><th>Статус</th></tr></thead>
                       <tbody>
                         {items.map((item) => (

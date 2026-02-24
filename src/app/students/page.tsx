@@ -333,19 +333,21 @@ export default function StudentsPage() {
       </section>
 
       <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
-        <table>
-          <thead><tr><th>ФИО</th><th>Телефон</th><th>Класс</th><th>Родители</th></tr></thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} style={{ cursor: "pointer" }} onClick={() => void openStudent(item)}>
-                <td>{item.user.fullName}</td>
-                <td>{item.user.phone || "-"}</td>
-                <td>{item.grade ?? "-"}</td>
-                <td>{item.parentLinks.map((p) => p.parent.user.fullName).join(", ") || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table-modern">
+            <thead><tr><th>ФИО</th><th>Телефон</th><th>Класс</th><th>Родители</th></tr></thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} style={{ cursor: "pointer" }} onClick={() => void openStudent(item)}>
+                  <td>{item.user.fullName}</td>
+                  <td>{item.user.phone || "-"}</td>
+                  <td>{item.grade ?? "-"}</td>
+                  <td>{item.parentLinks.map((p) => p.parent.user.fullName).join(", ") || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {addOpen ? (
