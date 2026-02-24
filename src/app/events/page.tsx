@@ -25,6 +25,7 @@ type EventItem = {
   status: "PLANNED" | "COMPLETED" | "CANCELED";
   plannedStartAt: string;
   plannedEndAt: string;
+  plannedHours: number;
   completionComment: string | null;
   participants: Array<{
     id: string;
@@ -109,6 +110,52 @@ function typeLabel(type: ActivityType) {
     PSYCHOLOGIST_SESSION: "Психолог"
   };
   return map[type];
+}
+
+type DayCounters = {
+  individualHours: number;
+  groupHours: number;
+  administrativeHours: number;
+  totalHours: number;
+  totalEvents: number;
+};
+
+function eventHours(event: EventItem) {
+  if (event.plannedHours > 0) return event.plannedHours;
+  const start = new Date(event.plannedStartAt).getTime();
+  const end = new Date(event.plannedEndAt).getTime();
+  return Math.max(0, (end - start) / 3600000);
+}
+
+function getDayCounters(items: EventItem[]): DayCounters {
+  const counters: DayCounters = {
+    individualHours: 0,
+    groupHours: 0,
+    administrativeHours: 0,
+    totalHours: 0,
+    totalEvents: items.length
+  };
+
+  for (const item of items) {
+    const hours = eventHours(item);
+    const category = getCategory(item.activityType);
+    counters.totalHours += hours;
+    if (category === "individual") counters.individualHours += hours;
+    if (category === "group") counters.groupHours += hours;
+    if (category === "administrative") counters.administrativeHours += hours;
+  }
+
+  return counters;
+}
+
+function formatHours(value: number) {
+  const normalized = Math.round(value * 10) / 10;
+  if (Number.isInteger(normalized)) return String(normalized);
+  return normalized.toFixed(1).replace(".", ",");
+}
+
+function dayCounterText(counters: DayCounters) {
+  return `Инд ${formatHours(counters.individualHours)}ч • Гр ${formatHours(counters.groupHours)}ч • Адм ${formatHours(counters.administrativeHours)}ч`;
 }
 
 function colorForType(type: ActivityType) {
@@ -220,6 +267,7 @@ export default function EventsPage() {
   const [studentIds, setStudentIds] = useState<string[]>([]);
 
   const [activeEvent, setActiveEvent] = useState<EventItem | null>(null);
+  const [deletingEvent, setDeletingEvent] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editSubject, setEditSubject] = useState("");
@@ -421,6 +469,14 @@ export default function EventsPage() {
     return map;
   }, [filteredEvents]);
 
+  const dayCountersByKey = useMemo(() => {
+    const map = new Map<string, DayCounters>();
+    for (const [key, items] of eventsByDay.entries()) {
+      map.set(key, getDayCounters(items));
+    }
+    return map;
+  }, [eventsByDay]);
+
   const rangeDays = useMemo(() => {
     const start = new Date(`${range.from}T00:00:00`);
     const end = new Date(`${range.to}T00:00:00`);
@@ -439,6 +495,17 @@ export default function EventsPage() {
 
   const dayEvents = useMemo(() => eventsByDay.get(dayKey) ?? [], [eventsByDay, dayKey]);
   const dayCards = useMemo(() => buildDayLayout(dayEvents), [dayEvents]);
+  const currentDayCounters = useMemo(
+    () =>
+      dayCountersByKey.get(dayKey) ?? {
+        individualHours: 0,
+        groupHours: 0,
+        administrativeHours: 0,
+        totalHours: 0,
+        totalEvents: 0
+      },
+    [dayCountersByKey, dayKey]
+  );
 
   const weekDays = useMemo(() => {
     const base = new Date(`${dayKey}T00:00:00`);
@@ -556,6 +623,28 @@ export default function EventsPage() {
     await navigator.clipboard.writeText(url);
   }
 
+  async function deleteActiveEvent() {
+    if (!activeEvent || deletingEvent) return;
+    const confirmed = window.confirm(
+      `Удалить занятие «${activeEvent.title}»?\n\nДействие необратимо.`
+    );
+    if (!confirmed) return;
+
+    setDeletingEvent(true);
+    const response = await fetch(`/api/events/${activeEvent.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(payload.error ?? "Не удалось удалить занятие");
+      setDeletingEvent(false);
+      return;
+    }
+
+    setDeletingEvent(false);
+    setActiveEvent(null);
+    setEditMode(false);
+    await loadEvents();
+  }
+
   function snapTimeFromOffset(y: number) {
     const minutesFromStart = Math.max(0, Math.floor(y / PIXELS_PER_MINUTE));
     const hour = Math.min(SLOT_END_HOUR - 1, SLOT_START_HOUR + Math.floor(minutesFromStart / 60));
@@ -632,6 +721,9 @@ export default function EventsPage() {
       {viewMode === "calendar" && scope === "day" ? (
         <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
+          <p style={{ marginTop: -4, marginBottom: 12, color: "var(--muted)", fontSize: 13 }}>
+            Счетчик дня: {dayCounterText(currentDayCounters)} • Всего {formatHours(currentDayCounters.totalHours)}ч ({currentDayCounters.totalEvents} событий)
+          </p>
           <div
             style={{
               position: "relative",
@@ -696,6 +788,13 @@ export default function EventsPage() {
                 {weekDays.map((day) => {
                   const key = toDayString(day);
                   const isToday = key === todayKey;
+                  const counters = dayCountersByKey.get(key) ?? {
+                    individualHours: 0,
+                    groupHours: 0,
+                    administrativeHours: 0,
+                    totalHours: 0,
+                    totalEvents: 0
+                  };
                   return (
                     <button
                       key={key}
@@ -708,7 +807,15 @@ export default function EventsPage() {
                         boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.2)" : undefined
                       }}
                     >
-                      {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
+                      <span style={{ display: "block", fontWeight: 700 }}>
+                        {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
+                      </span>
+                      <span style={{ display: "block", marginTop: 2, fontSize: 11, opacity: 0.85, whiteSpace: "normal", lineHeight: 1.2 }}>
+                        {dayCounterText(counters)}
+                      </span>
+                      <span style={{ display: "block", marginTop: 2, fontSize: 11, opacity: 0.85 }}>
+                        Всего {formatHours(counters.totalHours)}ч • {counters.totalEvents}
+                      </span>
                     </button>
                   );
                 })}
@@ -811,6 +918,13 @@ export default function EventsPage() {
               const key = toDayString(day);
               const isToday = key === todayKey;
               const items = eventsByDay.get(key) ?? [];
+              const counters = dayCountersByKey.get(key) ?? {
+                individualHours: 0,
+                groupHours: 0,
+                administrativeHours: 0,
+                totalHours: 0,
+                totalEvents: 0
+              };
               return (
                 <div
                   key={key}
@@ -826,6 +940,10 @@ export default function EventsPage() {
                   <button type="button" className="secondary" onClick={() => openCreateModal(key)} style={{ width: "100%", marginBottom: 6 }}>
                     {day.getDate()}
                   </button>
+                  <div style={{ marginBottom: 6, fontSize: 11, color: "var(--muted)", lineHeight: 1.25 }}>
+                    <div>{dayCounterText(counters)}</div>
+                    <div>Всего {formatHours(counters.totalHours)}ч • {counters.totalEvents}</div>
+                  </div>
                   {items.slice(0, 3).map((item) => {
                     const c = colorForType(item.activityType);
                     return (
@@ -848,12 +966,22 @@ export default function EventsPage() {
             {rangeDays.map((dayDate) => {
               const day = toDayString(dayDate);
               const items = eventsByDay.get(day) ?? [];
+              const counters = dayCountersByKey.get(day) ?? {
+                individualHours: 0,
+                groupHours: 0,
+                administrativeHours: 0,
+                totalHours: 0,
+                totalEvents: 0
+              };
               return (
                 <article key={day} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0 }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
                     <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
                     <button type="button" className="secondary" onClick={() => openCreateModal(day)}>Добавить</button>
                   </div>
+                  <p style={{ marginTop: -6, marginBottom: 10, color: "var(--muted)", fontSize: 13 }}>
+                    Счетчик дня: {dayCounterText(counters)} • Всего {formatHours(counters.totalHours)}ч ({counters.totalEvents} событий)
+                  </p>
                   {items.length ? (
                     <table className="table-modern">
                       <thead><tr><th>Время</th><th>Событие</th><th>Тип</th><th>Статус</th></tr></thead>
@@ -1059,6 +1187,9 @@ export default function EventsPage() {
             <div className="icon-switch" style={{ marginTop: 8, marginBottom: 8 }}>
               <button onClick={() => setEditMode((v) => !v)}>{editMode ? "Скрыть редактирование" : "Редактировать"}</button>
               <button className="secondary" onClick={copyEventLink}>Поделиться ссылкой</button>
+              <button className="btn-destructive" onClick={deleteActiveEvent} disabled={deletingEvent}>
+                {deletingEvent ? "Удаление..." : "Удалить занятие"}
+              </button>
             </div>
 
             {editMode ? (

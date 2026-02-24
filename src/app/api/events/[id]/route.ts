@@ -106,3 +106,16 @@ export async function PATCH(request: NextRequest, context: Params) {
     return serverError(error);
   }
 }
+
+export async function DELETE(_: NextRequest, context: Params) {
+  try {
+    const { id } = await context.params;
+    const existing = await db.event.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) return notFound("Event not found");
+
+    await db.event.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return serverError(error);
+  }
+}
