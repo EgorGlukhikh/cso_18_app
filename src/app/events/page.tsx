@@ -446,6 +446,15 @@ export default function EventsPage() {
     return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   }, [dayKey]);
 
+  const weekCardsByDay = useMemo(() => {
+    const map = new Map<string, CalendarCard[]>();
+    for (const day of weekDays) {
+      const key = toDayString(day);
+      map.set(key, buildDayLayout(eventsByDay.get(key) ?? []));
+    }
+    return map;
+  }, [weekDays, eventsByDay]);
+
   const monthGridDays = useMemo(() => {
     const base = new Date(`${dayKey}T00:00:00`);
     const monthStart = startOfMonth(base);
@@ -547,14 +556,23 @@ export default function EventsPage() {
     await navigator.clipboard.writeText(url);
   }
 
-  function onDayCalendarClick(e: React.MouseEvent<HTMLDivElement>) {
-    const bounds = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - bounds.top;
+  function snapTimeFromOffset(y: number) {
     const minutesFromStart = Math.max(0, Math.floor(y / PIXELS_PER_MINUTE));
     const hour = Math.min(SLOT_END_HOUR - 1, SLOT_START_HOUR + Math.floor(minutesFromStart / 60));
     const minute = Math.floor((minutesFromStart % 60) / 30) * 30;
-    const time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-    openCreateModal(dayKey, time);
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  }
+
+  function onDayCalendarClick(e: React.MouseEvent<HTMLDivElement>) {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - bounds.top;
+    openCreateModal(dayKey, snapTimeFromOffset(y));
+  }
+
+  function onWeekDayCalendarClick(e: React.MouseEvent<HTMLDivElement>, day: string) {
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - bounds.top;
+    openCreateModal(day, snapTimeFromOffset(y));
   }
 
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
@@ -670,36 +688,115 @@ export default function EventsPage() {
       {viewMode === "calendar" && scope === "week" ? (
         <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь недели</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
-            {weekDays.map((day) => {
-              const key = toDayString(day);
-              const isToday = key === todayKey;
-              const items = eventsByDay.get(key) ?? [];
-              return (
-                <article
-                  key={key}
-                  className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg"
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ minWidth: 1040 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "72px repeat(7, minmax(120px, 1fr))", gap: 0 }}>
+                <div />
+                {weekDays.map((day) => {
+                  const key = toDayString(day);
+                  const isToday = key === todayKey;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className="secondary"
+                      onClick={() => openCreateModal(key)}
+                      style={{
+                        marginBottom: 8,
+                        borderColor: isToday ? "hsl(var(--primary))" : undefined,
+                        boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.2)" : undefined
+                      }}
+                    >
+                      {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
+                    </button>
+                  );
+                })}
+
+                <div
                   style={{
-                    margin: 0,
-                    padding: 10,
-                    borderColor: isToday ? "hsl(var(--primary))" : undefined,
-                    boxShadow: isToday ? "0 0 0 2px hsl(var(--primary) / 0.25)" : undefined
+                    position: "relative",
+                    height: calendarHeight,
+                    borderTop: "1px solid var(--border)",
+                    borderBottom: "1px solid var(--border)",
+                    borderLeft: "1px solid var(--border)",
+                    background: "hsl(var(--background))"
                   }}
                 >
-                  <button type="button" className="secondary" style={{ width: "100%", marginBottom: 8 }} onClick={() => openCreateModal(key)}>
-                    {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
-                  </button>
-                  {items.length ? items.map((item) => {
-                    const c = colorForType(item.activityType);
+                  {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
+                    const hour = SLOT_START_HOUR + idx;
+                    const top = idx * 60 * PIXELS_PER_MINUTE;
                     return (
-                      <button key={item.id} className={c.className} onClick={() => openEvent(item)} style={{ width: "100%", marginBottom: 6, textAlign: "left" }}>
-                        {new Date(item.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} {eventShortLabel(item)}
-                      </button>
+                      <div key={hour} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }}>
+                        <span style={{ position: "absolute", left: 6, top: -9, fontSize: 11, color: "var(--muted)" }}>
+                          {String(hour).padStart(2, "0")}:00
+                        </span>
+                      </div>
                     );
-                  }) : <div style={{ fontSize: 12, color: "var(--muted)" }}>Нет событий</div>}
-                </article>
-              );
-            })}
+                  })}
+                </div>
+
+                {weekDays.map((day) => {
+                  const key = toDayString(day);
+                  const isToday = key === todayKey;
+                  const cards = weekCardsByDay.get(key) ?? [];
+                  return (
+                    <div
+                      key={key}
+                      onClick={(e) => onWeekDayCalendarClick(e, key)}
+                      style={{
+                        position: "relative",
+                        height: calendarHeight,
+                        borderTop: "1px solid var(--border)",
+                        borderBottom: "1px solid var(--border)",
+                        borderRight: "1px solid var(--border)",
+                        background: "hsl(var(--card))",
+                        cursor: "pointer",
+                        boxShadow: isToday ? "inset 0 0 0 2px hsl(var(--primary) / 0.25)" : undefined
+                      }}
+                    >
+                      {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
+                        const top = idx * 60 * PIXELS_PER_MINUTE;
+                        return (
+                          <div key={`${key}-${idx}`} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid var(--border)", pointerEvents: "none" }} />
+                        );
+                      })}
+
+                      {cards.map((card) => {
+                        const c = colorForType(card.event.activityType);
+                        return (
+                          <article
+                            key={card.event.id}
+                            className={c.className}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEvent(card.event);
+                            }}
+                            style={{
+                              position: "absolute",
+                              top: card.top,
+                              left: `${card.column * 50}%`,
+                              width: `calc(${card.width}% - 8px)`,
+                              height: card.height,
+                              borderRadius: 10,
+                              padding: "6px 8px",
+                              overflow: "hidden",
+                              cursor: "pointer",
+                              zIndex: 2
+                            }}
+                            title={card.event.title}
+                          >
+                            <strong style={{ display: "block", fontSize: 11 }}>{eventShortLabel(card.event)}</strong>
+                            <span style={{ fontSize: 10, display: "block", opacity: 0.9 }}>
+                              {new Date(card.event.plannedStartAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </section>
       ) : null}
