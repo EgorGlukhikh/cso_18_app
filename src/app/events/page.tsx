@@ -537,8 +537,8 @@ export default function EventsPage() {
   const calendarHeight = (SLOT_END_HOUR - SLOT_START_HOUR) * 60 * PIXELS_PER_MINUTE;
 
   return (
-    <div className="grid">
-      <section className="card">
+    <div className="space-y-6">
+      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
         <h1 style={{ marginTop: 0, marginBottom: 10 }}>Расписание</h1>
 
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
@@ -588,7 +588,7 @@ export default function EventsPage() {
       </section>
 
       {viewMode === "calendar" && scope === "day" ? (
-        <section className="card">
+        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь дня</h2>
           <div style={{ position: "relative", height: calendarHeight, border: "1px solid var(--border)", borderRadius: 12 }} onClick={onDayCalendarClick}>
             {Array.from({ length: SLOT_END_HOUR - SLOT_START_HOUR + 1 }).map((_, idx) => {
@@ -636,14 +636,14 @@ export default function EventsPage() {
       ) : null}
 
       {viewMode === "calendar" && scope === "week" ? (
-        <section className="card">
+        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь недели</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
             {weekDays.map((day) => {
               const key = toDayString(day);
               const items = eventsByDay.get(key) ?? [];
               return (
-                <article key={key} className="card" style={{ margin: 0, padding: 10 }}>
+                <article key={key} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 10 }}>
                   <button type="button" className="secondary" style={{ width: "100%", marginBottom: 8 }} onClick={() => openCreateModal(key)}>
                     {day.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric" })}
                   </button>
@@ -663,7 +663,7 @@ export default function EventsPage() {
       ) : null}
 
       {viewMode === "calendar" && scope === "month" ? (
-        <section className="card">
+        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Календарь месяца</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((d) => <strong key={d} style={{ textAlign: "center", color: "var(--muted)" }}>{d}</strong>)}
@@ -691,14 +691,14 @@ export default function EventsPage() {
       ) : null}
 
       {viewMode === "list" ? (
-        <section className="card">
+        <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
           <h2 style={{ marginTop: 0 }}>Список по дням</h2>
-          <div className="grid">
+          <div className="space-y-6">
             {rangeDays.map((dayDate) => {
               const day = toDayString(dayDate);
               const items = eventsByDay.get(day) ?? [];
               return (
-                <article key={day} className="card" style={{ margin: 0 }}>
+                <article key={day} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0 }}>
                   <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
                     <h3 style={{ marginTop: 0 }}>{dayDate.toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</h3>
                     <button type="button" className="secondary" onClick={() => openCreateModal(day)}>Добавить</button>
@@ -727,7 +727,7 @@ export default function EventsPage() {
 
       {createOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "grid", placeItems: "center", zIndex: 60 }}>
-          <div className="card" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ marginTop: 0 }}>Создать занятие</h2>
               <button className="secondary" onClick={() => setCreateOpen(false)}>Закрыть</button>
@@ -813,7 +813,7 @@ export default function EventsPage() {
 
       {activeEvent ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "grid", placeItems: "center", zIndex: 60 }}>
-          <div className="card" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(760px, 96vw)", maxHeight: "90vh", overflow: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ marginTop: 0 }}>{activeEvent.title}</h2>
               <button className="secondary" onClick={() => setActiveEvent(null)}>Закрыть</button>

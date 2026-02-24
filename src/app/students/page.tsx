@@ -323,8 +323,8 @@ export default function StudentsPage() {
   }, [from, to]);
 
   return (
-    <div className="grid">
-      <section className="card">
+    <div className="space-y-6">
+      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
         <h1 style={{ marginTop: 0 }}>Студенты</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={() => setAddOpen(true)}>Добавить</button>
@@ -332,7 +332,7 @@ export default function StudentsPage() {
         {error ? <p className="error">{error}</p> : null}
       </section>
 
-      <section className="card">
+      <section className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg">
         <table>
           <thead><tr><th>ФИО</th><th>Телефон</th><th>Класс</th><th>Родители</th></tr></thead>
           <tbody>
@@ -350,7 +350,7 @@ export default function StudentsPage() {
 
       {addOpen ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="card" style={{ width: "min(760px, 95vw)" }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(760px, 95vw)" }}>
             <h2 style={{ marginTop: 0 }}>Добавить студента</h2>
             <form className="grid cols-2" onSubmit={onSubmit}>
               <label>ФИО<input value={fullName} onChange={(e) => setFullName(e.target.value)} required /></label>
@@ -369,7 +369,7 @@ export default function StudentsPage() {
 
       {activeStudent ? (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "grid", placeItems: "center", zIndex: 70 }}>
-          <div className="card" style={{ width: "min(1120px, 96vw)", maxHeight: "92vh", overflow: "auto" }}>
+          <div className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ width: "min(1120px, 96vw)", maxHeight: "92vh", overflow: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h2 style={{ marginTop: 0 }}>{activeStudent.user.fullName}</h2>
               <button className="secondary" onClick={() => setActiveStudent(null)}>Закрыть</button>
@@ -387,9 +387,9 @@ export default function StudentsPage() {
             <div style={{ marginTop: 8 }}><button onClick={saveStudent}>Сохранить карточку</button></div>
 
             <h3 style={{ marginTop: 18 }}>Связка с родителями</h3>
-            <div className="grid" style={{ gap: 8 }}>
+            <div className="space-y-6" style={{ gap: 8 }}>
               {activeStudent.parentLinks.map((link) => (
-                <div key={link.id} className="card" style={{ margin: 0, padding: 8 }}>
+                <div key={link.id} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 8 }}>
                   {link.parent.user.fullName} ({link.relationship || "родитель"})
                 </div>
               ))}
@@ -423,7 +423,7 @@ export default function StudentsPage() {
                   const key = toDayString(day);
                   const dayItems = visibleSchedule.filter((item) => toDayString(new Date(item.plannedStartAt)) === key);
                   return (
-                    <div key={key} className="card" style={{ margin: 0, padding: 8, minHeight: 120 }}>
+                    <div key={key} className="rounded-2xl border-2 border-border bg-card p-8 shadow-lg" style={{ margin: 0, padding: 8, minHeight: 120 }}>
                       <div style={{ fontWeight: 700, marginBottom: 6 }}>{day.getDate()}</div>
                       {dayItems.slice(0, 3).map((item) => {
                         const c = colorByCategory(item.category);
@@ -434,7 +434,7 @@ export default function StudentsPage() {
                 })}
               </div>
             ) : (
-              <div className="grid">
+              <div className="space-y-6">
                 {visibleSchedule.map((item) => {
                   const c = colorByCategory(item.category);
                   return <div key={item.id} style={{ border: `1px solid ${c.border}`, background: c.bg, borderRadius: 8, padding: "8px 10px" }}>{new Date(item.plannedStartAt).toLocaleString("ru-RU")} - {item.title}</div>;
