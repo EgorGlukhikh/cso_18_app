@@ -43,6 +43,7 @@ export default function ParentsPage() {
 
   const [activeParent, setActiveParent] = useState<ParentItem | null>(null);
   const [parentPhone, setParentPhone] = useState("");
+  const [parentTelegramChatId, setParentTelegramChatId] = useState("");
   const [parentComment, setParentComment] = useState("");
   const [parentTgEnabled, setParentTgEnabled] = useState(false);
   const [parentReminderHour, setParentReminderHour] = useState("8");
@@ -108,6 +109,7 @@ export default function ParentsPage() {
     const payload = (await response.json()) as ParentItem;
     setActiveParent(payload);
     setParentPhone(payload.user.phone ?? "");
+    setParentTelegramChatId(payload.telegramChatId ?? "");
     setParentComment(payload.comment ?? "");
     setParentTgEnabled(payload.telegramEnabled);
     setParentReminderHour(String(payload.morningReminderHour));
@@ -120,6 +122,7 @@ export default function ParentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         phone: parentPhone,
+        telegramChatId: parentTelegramChatId.trim() || null,
         comment: parentComment,
         telegramEnabled: parentTgEnabled,
         morningReminderHour: Number(parentReminderHour || "8")
@@ -251,6 +254,14 @@ export default function ParentsPage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Телефон</label>
                   <Input value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Telegram Chat ID</label>
+                  <Input
+                    value={parentTelegramChatId}
+                    onChange={(e) => setParentTelegramChatId(e.target.value)}
+                    placeholder="например: 123456789"
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Час напоминания</label>

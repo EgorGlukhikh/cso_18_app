@@ -7,6 +7,7 @@ import { requireAdminUser } from "@/lib/require-admin";
 const patchSchema = z.object({
   fullName: z.string().min(3).optional(),
   phone: z.string().optional(),
+  telegramChatId: z.string().trim().min(1).nullable().optional(),
   telegramEnabled: z.boolean().optional(),
   morningReminderHour: z.number().int().min(0).max(23).optional(),
   comment: z.string().max(5000).optional()
@@ -58,6 +59,7 @@ export async function PATCH(request: NextRequest, context: Params) {
     const updated = await db.parentProfile.update({
       where: { id: parentProfileId },
       data: {
+        ...(payload.telegramChatId !== undefined ? { telegramChatId: payload.telegramChatId } : {}),
         ...(payload.telegramEnabled !== undefined ? { telegramEnabled: payload.telegramEnabled } : {}),
         ...(payload.morningReminderHour !== undefined ? { morningReminderHour: payload.morningReminderHour } : {}),
         ...(payload.comment !== undefined ? { comment: payload.comment } : {})
